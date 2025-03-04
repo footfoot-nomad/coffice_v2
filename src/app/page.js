@@ -2014,7 +2014,7 @@ export default function Home() {
                                   {isLoading ? (
                                     <span className="loading loading-spinner loading-sm"></span>
                                   ) : (
-                                    <span className="text-[16px] font-semibold">{attendanceMessage}</span>
+                                    <span className="text-[16px] font-semibold text-black">{attendanceMessage}</span>
                                   )}
                                 </div>
                               </button>
