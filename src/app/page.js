@@ -159,7 +159,7 @@ const MemberCard = ({
   const formatTimestamp = (timestamp) => {
     const timeStr = timestamp.split('T')[1];
     const [hours, minutes] = timeStr.split(':');
-    return `${hours}시 ${minutes}분 출근`;
+    return `${parseInt(hours)}시 ${parseInt(minutes)}분 출근`;
   };
 
   // 상태에 따른 색상을 반환하는 함수 추가
@@ -522,7 +522,7 @@ const MemberCard = ({
               </div>
             ) : (
               <span 
-                className={`text-[11px] font-medium flex items-center justify-center ${
+                className={`text-[11px] font-medium flex items-center justify-center leading-tight ${
                   status?.status_user === '지각' ? 'text-orange-500' : 
                   (status?.status_user === '출근' || status?.status_user === '일등') ? 'text-blue-500' : 
                   'text-gray-500'
