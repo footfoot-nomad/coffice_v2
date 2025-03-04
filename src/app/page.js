@@ -172,7 +172,7 @@ const MemberCard = ({
     
     switch (status.status_user) {
       case '일등':
-      case '출석':
+      case '출근':
         return { borderColor: '#2196F3' }; // 파란색
       case '지각':
         return { borderColor: '#FF9800' }; // 오렌지색
@@ -185,22 +185,23 @@ const MemberCard = ({
 
   // 타임스탬프 포맷팅
   const formatTimestamp = (timestamp) => {
-    // timestamp에서 시간 부분만 추출 (예: "2024-03-20T14:30:00" -> "14:30")
     const timeStr = timestamp.split('T')[1];
     const [hours, minutes] = timeStr.split(':');
-    return `${hours}:${minutes}`;
+    return `${hours}시 ${minutes}분 출근`;
   };
 
   // 상태에 따른 색상을 반환하는 함수 추가
   const getStatusColor = (status) => {
     switch (status) {
       case '일등':
-      case '출석':
+      case '출근':
         return '#2196F3'; // 파란색
       case '지각':
         return '#FF9800'; // 오렌지색
       case '결석':
         return '#F44336'; // 빨간색
+      case '퇴근':
+        return '#000000'; // 검은색
       default:
         return '#E0E0E0'; // 기본 회색
     }
@@ -212,7 +213,7 @@ const MemberCard = ({
 
     const allMembers = Object.values(memberStatus[officeId].dates[selectedDate].members);
     const attendedMembers = allMembers
-      .filter(m => m.status_user === '출석' || m.status_user === '일등' || m.status_user === '지각')
+      .filter(m => m.status_user === '출근' || m.status_user === '일등' || m.status_user === '지각' || m.status_user === '퇴근')
       .sort((a, b) => new Date(a.timestamp_user) - new Date(b.timestamp_user));
 
     const order = attendedMembers.findIndex(m => m.id_user === userId) + 1;
@@ -286,6 +287,18 @@ const MemberCard = ({
       document.body.appendChild(errorMessage);
       setTimeout(() => errorMessage.remove(), 3000);
     }
+  };
+
+  // 근무 시간 포맷팅 함수 수정
+  const formatWorkingTime = (minutes) => {
+    if (!minutes) return { time: '', label: '' };
+    const mins = parseInt(minutes);
+    const hours = Math.floor(mins / 60);
+    const remainingMinutes = mins % 60;
+    return {
+      time: `${hours}시간 ${remainingMinutes}분`,
+      label: '근무'
+    };
   };
 
   return (
@@ -500,7 +513,7 @@ const MemberCard = ({
       {/* 카드 본체 */}
       <div className="flex flex-col items-center">
         <div ref={cardRef} className="shrink-0 flex flex-col items-center w-[25vw] min-w-[90px] max-w-[120px] border-2 border-gray-600 rounded-lg shadow-md bg-white overflow-hidden relative">
-          {/* 출석 뱃지 */}
+          {/* 출근 뱃지 */}
           {status?.status_user && (
             <div className="absolute right-1 top-1 z-10">
               <div className="badge bg-white shadow-md w-[36px] h-[20px] flex items-center justify-center p-0">
@@ -514,7 +527,7 @@ const MemberCard = ({
           <div className="w-full">
             <div className={`relative -ml-0 -mt-0 ${
               (!status?.status_user || status?.status_user === '결석') ? 'grayscale' : ''
-            } ${status?.status_user === '일등' ? 'scale-x-[-1]' : ''}`}>
+            } ${status?.status_user === '퇴근' ? 'scale-x-[-1]' : ''}`}>
               <MemoizedProfileCharacter
                 profileStyle={memberInfo?.profilestyle_user}
                 size="100%"
@@ -523,28 +536,38 @@ const MemberCard = ({
             </div>
           </div>
 
+
           <div className="w-full px-2 pt-[5px] pb-[13px] flex flex-col gap-0">
             <span className="text-[15px] font-semibold text-center text-gray-800 truncate w-full block">
               {memberInfo?.name_user || '사용자'}
             </span>
-            <span 
-              className={`text-[14px] font-medium flex items-center justify-center ${
-                status?.status_user === '지각' ? 'text-orange-500' : 
-                (status?.status_user === '출석' || status?.status_user === '일등') ? 'text-blue-500' : 
-                'text-gray-500'
-              }`}
-            >
-              {(status?.status_user === '출석' || status?.status_user === '일등' || status?.status_user === '지각') && 
-               status.timestamp_user ? 
-                formatTimestamp(status.timestamp_user) : 
-                '\u00A0'
-              }
-            </span>
+            {/* 퇴근 상태일 때 근무 시간 표시 */}
+            {status?.status_user === '퇴근' && status?.message_user ? (
+              <div className="flex items-center justify-center">
+                <span className="text-[11px] font-medium text-gray-600 leading-tight">
+                  {formatWorkingTime(status.message_user).time} {formatWorkingTime(status.message_user).label}
+                </span>
+              </div>
+            ) : (
+              <span 
+                className={`text-[11px] font-medium flex items-center justify-center ${
+                  status?.status_user === '지각' ? 'text-orange-500' : 
+                  (status?.status_user === '출근' || status?.status_user === '일등') ? 'text-blue-500' : 
+                  'text-gray-500'
+                }`}
+              >
+                {(status?.status_user === '출근' || status?.status_user === '일등' || status?.status_user === '지각') && 
+                 status.timestamp_user ? 
+                  formatTimestamp(status.timestamp_user) : 
+                  '\u00A0'
+                }
+              </span>
+            )}
           </div>
         </div>
         
-        {/* 출석 순서 뱃지 */}
-        {(status?.status_user === '출석' || status?.status_user === '일등' || status?.status_user === '지각') && (
+        {/* 출근 순서 뱃지 */}
+        {(status?.status_user === '출근' || status?.status_user === '일등' || status?.status_user === '지각') && (
           <div className="mt-[-13px] z-10">
             <div className="w-[24px] h-[24px] rounded-full bg-[#FFFF00] border border-black flex items-center justify-center shadow-md">
               <span className="text-[14px] font-bold text-black">
@@ -1021,7 +1044,7 @@ export default function Home() {
     console.log('memberStatus 변경됨:', memberStatus);
   }, [memberStatus]);
 
-  // 출석 버튼 상태 관리
+  // 출근 버튼 상태 관리
   useEffect(() => {
     if (!selectedSubscription || !officeInfo || !selectedDate) return;
 
@@ -1034,51 +1057,67 @@ export default function Home() {
       today.setHours(0, 0, 0, 0);
       selectedDateObj.setHours(0, 0, 0, 0);
 
-      // 현재 사용자의 출석 상태 확인
+      // 현재 사용자의 출근 상태 확인
       const currentStatus = memberStatus[selectedSubscription.id_coffice]
         ?.dates[selectedDate]
         ?.members[selectedUserData.id_user]
         ?.status_user;
 
-      // 이미 출석했거나 일등인 경우 버튼 비활성화
-      if (currentStatus === '출석' || currentStatus === '일등') {
-        setAttendanceMessage('출석 완료');
+      // 영업 시간 정보 가져오기
+      const dayMapping = {
+        '월': 'mon_operation_office',
+        '화': 'tue_operation_office',
+        '수': 'wed_operation_office',
+        '목': 'thu_operation_office',
+        '금': 'fri_operation_office',
+        '토': 'sat_operation_office',
+        '일': 'sun_operation_office'
+      };
+
+      const officeId = selectedSubscription?.coffices?.offices?.id_office;
+      const operationHours = officeId ? officeInfo[officeId]?.[dayMapping[selectedSubscription.day_coffice]] : null;
+      
+      if (!operationHours) return;
+
+      // operationHours가 배열 형태로 들어오는 경우 처리
+      const [openTimeStr, closeTimeStr] = operationHours;
+      
+      // 영업 종료 시간 설정
+      const [closeHour, closeMinute] = closeTimeStr.split(':').map(Number);
+      const closeTime = new Date();
+      closeTime.setHours(closeHour, closeMinute, 0);
+
+      // 이미 출근했거나 일등인 경우 퇴근하기 버튼 활성화 (영업종료 시간 전까지)
+      if ((currentStatus === '출근' || currentStatus === '일등') && now < closeTime) {
+        setAttendanceMessage('퇴근하기');
+        setIsButtonDisabled(false);
+        return;
+      }
+
+      // 이미 퇴근한 경우
+      if (currentStatus === '퇴근') {
+        setAttendanceMessage('퇴근 완료');
         setIsButtonDisabled(true);
         return;
       }
 
       // 기존 로직 유지
       if (selectedDateObj > today) {
-        setAttendanceMessage('출석하기');
+        setAttendanceMessage('출근하기');
         setIsButtonDisabled(true);
       } else if (selectedDateObj < today) {
         setAttendanceMessage('지난 날짜예요.');
         setIsButtonDisabled(true);
       } else {
-        const dayMapping = {
-          '월': 'mon_operation_office',
-          '화': 'tue_operation_office',
-          '수': 'wed_operation_office',
-          '목': 'thu_operation_office',
-          '금': 'fri_operation_office',
-          '토': 'sat_operation_office',
-          '일': 'sun_operation_office'
-        };
-
-        const officeId = selectedSubscription?.coffices?.offices?.id_office;
-        const operationHours = officeId ? officeInfo[officeId]?.[dayMapping[selectedSubscription.day_coffice]] : null;
-        
-        if (!operationHours) return;
-
-        const [openHour, openMinute] = operationHours[0].split(':').map(Number);
+        const [openHour, openMinute] = openTimeStr.split(':').map(Number);
         const openTime = new Date();
         openTime.setHours(openHour, openMinute, 0);
 
         if (now < openTime) {
-          setAttendanceMessage('출석하기');
+          setAttendanceMessage('출근하기');
           setIsButtonDisabled(true);
         } else {
-          setAttendanceMessage('출석하기');
+          setAttendanceMessage('출근하기');
           setIsButtonDisabled(false);
         }
       }
@@ -1401,17 +1440,18 @@ export default function Home() {
         throw new Error('유효하지 않은 ID 형식입니다.');
       }
 
-      // 기존 출석 로직
+      // 기존 출근 로직
       const { data: existingEvents, error: fetchError } = await supabase
         .from('event_log')
         .select('*')
         .eq('id_coffice', selectedSubscription.id_coffice.toString()) // toString() 추가
         .eq('date_event', selectedDate)
-        .in('type_event', ['출석', '일등']);
+        .in('type_event', ['출근', '일등']);
 
       if (fetchError) throw fetchError;
 
-      const attendanceType = existingEvents?.length === 0 ? '일등' : '출석';
+      // 첫 번째 출근자는 '일등', 이후는 '출근'으로 설정
+      const attendanceType = existingEvents?.length === 0 ? '일등' : '출근';
 
       const { data, error } = await supabase
         .from('event_log')
@@ -1427,10 +1467,10 @@ export default function Home() {
         ]);
 
       if (error) throw error;
-      console.log('출석 이벤트 생성 성공:', data);
+      console.log('출근 이벤트 생성 성공:', data);
 
     } catch (error) {
-      console.error('출석 이벤트 생성 실패:', error);
+      console.error('출근 이벤트 생성 실패:', error);
       const warningMessage = document.createElement('div');
       warningMessage.className = 'alert alert-warning w-[288px] fixed top-[calc(70vh+100px)] left-1/2 -translate-x-1/2 z-50';
       warningMessage.innerHTML = `
@@ -1671,6 +1711,105 @@ export default function Home() {
     return () => channel.unsubscribe();
   }, [selectedSubscription]);
 
+  const createLeaveEvent = async () => {
+    if (!selectedSubscription || !selectedDate) return;
+
+    setIsLoading(true);
+
+    try {
+      // 현재 사용자의 출근 이벤트 찾기
+      const { data: attendanceEvent, error: fetchError } = await supabase
+        .from('event_log')
+        .select('*')
+        .eq('id_coffice', selectedSubscription.id_coffice.toString())
+        .eq('id_user', selectedUserData.id_user.toString())
+        .eq('date_event', selectedDate)
+        .in('type_event', ['출근', '일등'])
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (!attendanceEvent) {
+        throw new Error('출근 기록을 찾을 수 없습니다.');
+      }
+
+      // 근무 시간 계산 (분 단위)
+      const attendanceTime = new Date(attendanceEvent.timestamp_event);
+      const leaveTime = new Date();
+      const workingMinutes = Math.floor((leaveTime - attendanceTime) / (1000 * 60));
+
+      // 시간과 분으로 변환 (memberStatus용)
+      const hours = Math.floor(workingMinutes / 60);
+      const minutes = workingMinutes % 60;
+      const workingTimeMessage = `${hours}시간 ${minutes}분 근무`;
+
+      // 퇴근 이벤트 생성 (event_log에는 분 단위로 저장)
+      const { data, error } = await supabase
+        .from('event_log')
+        .insert([
+          {
+            id_coffice: selectedSubscription.id_coffice.toString(),
+            id_user: selectedUserData.id_user.toString(),
+            type_event: '퇴근',
+            message_event: workingMinutes.toString(), // 분 단위로 저장
+            date_event: selectedDate,
+            timestamp_event: leaveTime.toISOString()
+          }
+        ]);
+
+      if (error) throw error;
+
+      // memberStatus 업데이트
+      setMemberStatus(prevStatus => {
+        const newStatus = { ...prevStatus };
+        if (!newStatus[selectedSubscription.id_coffice]) {
+          newStatus[selectedSubscription.id_coffice] = { dates: {} };
+        }
+        if (!newStatus[selectedSubscription.id_coffice].dates[selectedDate]) {
+          newStatus[selectedSubscription.id_coffice].dates[selectedDate] = { members: {} };
+        }
+
+        newStatus[selectedSubscription.id_coffice].dates[selectedDate].members[selectedUserData.id_user] = {
+          id_user: selectedUserData.id_user,
+          status_user: '퇴근',
+          message_user: workingTimeMessage, // 'HH시간 MM분 근무' 형식으로 저장
+          timestamp_user: leaveTime.toISOString()
+        };
+
+        return newStatus;
+      });
+
+      console.log('퇴근 처리 완료:', workingTimeMessage);
+
+      // 성공 메시지 표시
+      const successMessage = document.createElement('div');
+      successMessage.className = 'alert alert-success w-[288px] fixed top-[calc(70vh+50px)] left-1/2 -translate-x-1/2 z-50';
+      successMessage.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>퇴근 처리되었습니다.</span>
+      `;
+      document.body.appendChild(successMessage);
+      setTimeout(() => successMessage.remove(), 3000);
+
+    } catch (error) {
+      console.error('퇴근 처리 실패:', error);
+      const errorMessage = document.createElement('div');
+      errorMessage.className = 'alert alert-error w-[288px] fixed top-[calc(70vh+50px)] left-1/2 -translate-x-1/2 z-50';
+      errorMessage.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>퇴근 처리에 실패했습니다.</span>
+      `;
+      document.body.appendChild(errorMessage);
+      setTimeout(() => errorMessage.remove(), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="relative"> {/* 기존 최상위 div */}
       <div className="flex justify-center min-h-screen bg-gray-50">
@@ -1867,7 +2006,7 @@ export default function Home() {
                               </svg>
                             </div>
                             <div className="message-tooltip hidden absolute left-[-14px] bottom-full mb-2 w-[180px] bg-gray-800/80 text-white text-sm rounded-lg p-3 z-50">
-                              <div className="text-gray-200">일등으로 출석한 사람이</div>
+                              <div className="text-gray-200">일등으로 출근한 사람이</div>
                               <div className="text-gray-200">메시지를 수정할 수 있어요.</div>
 
                               <div className="absolute left-4 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-800/80"></div>
@@ -1910,10 +2049,10 @@ export default function Home() {
                         </div>
                       </div>
 
-{/* 출석 현황 영역 */}
+{/* 출근 현황 영역 */}
                       <div className="h-[35vh] flex flex-col mt-[2vh]">
                         <div className="text-[20px] font-semibold text-gray-800 ml-4 mb-3">
-                          출석 현황
+                          출근 현황
                         </div>
                         {/* 멤버 카드 영역 */}
                         <div className="flex-1 overflow-y-auto min-h-[180px]">
@@ -1924,9 +2063,10 @@ export default function Home() {
                               .sort((a, b) => {
                                 const statusOrder = {
                                   '일등': 0,
-                                  '출석': 1,
+                                  '출근': 1,
                                   '지각': 2,
                                   '결석': 3,
+                                  '퇴근': 5,
                                   null: 4 // 대기 상태
                                 };
                                 
@@ -1983,7 +2123,7 @@ export default function Home() {
                           </div>
                         </div>
                         
-                        {/* 출석 버튼 영역 */}
+                        {/* 출근 버튼 영역 */}
                         {(() => {
                           const today = new Date();
                           const selectedDateObj = new Date(selectedDate);
@@ -1997,7 +2137,18 @@ export default function Home() {
                           return isToday ? (
                             <div className="flex justify-center mb-[2vh]">
                               <button
-                                onClick={createAttendanceEvent}
+                                onClick={() => {
+                                  const currentStatus = memberStatus[selectedSubscription.id_coffice]
+                                    ?.dates[selectedDate]
+                                    ?.members[selectedUserData.id_user]
+                                    ?.status_user;
+                                  
+                                  if (currentStatus === '출근' || currentStatus === '일등') {
+                                    createLeaveEvent();
+                                  } else {
+                                    createAttendanceEvent();
+                                  }
+                                }}
                                 disabled={isButtonDisabled || isLoading}
                                 className={`
                                   btn btn-circle w-[288px] h-[48px] mx-auto block
