@@ -36,93 +36,65 @@ const getDatesForMonth = (yearMonth, dayOfWeek) => {
 };
 
 // Timer 컴포넌트 수정
-const Timer = ({ selectedSubscription, officeInfo, selectedDate }) => {
-  const [timeLeft, setTimeLeft] = useState(null);
+const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, selectedUserData }) => {
+  const [timeElapsed, setTimeElapsed] = useState(0);
   const [timerStatus, setTimerStatus] = useState('waiting');
-  const [isExactToday, setIsExactToday] = useState(false);  // isExactToday 상태 추가
 
   useEffect(() => {
-    if (!selectedSubscription || !officeInfo) return;
+    if (!selectedSubscription || !selectedDate || !memberStatus || !selectedUserData) return;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const currentStatus = memberStatus[selectedSubscription.id_coffice]
+      ?.dates[selectedDate]
+      ?.members[selectedUserData.id_user];
 
-    const selectedDateObj = new Date(selectedDate);
-    selectedDateObj.setHours(0, 0, 0, 0);
+    if (!currentStatus) return;
 
-    const isExactToday = today.getTime() === selectedDateObj.getTime();
-    setIsExactToday(isExactToday);
-
-    if (!isExactToday) {
-      setTimeLeft(null);
+    // 퇴근 상태일 때
+    if (currentStatus.status_user === '퇴근') {
+      const totalSeconds = parseInt(currentStatus.message_user);
+      setTimeElapsed(totalSeconds);
+      setTimerStatus('ended');
       return;
     }
 
-    const dayMapping = {
-      '월': 'mon_operation_office',
-      '화': 'tue_operation_office',
-      '수': 'wed_operation_office',
-      '목': 'thu_operation_office',
-      '금': 'fri_operation_office',
-      '토': 'sat_operation_office',
-      '일': 'sun_operation_office'
-    };
-
-    const calculateTimes = () => {
-      const now = new Date();
-      const operationHours = officeInfo[selectedSubscription.id_office]?.[dayMapping[selectedSubscription.day_coffice]];
+    // 출근, 일등, 지각 상태일 때
+    if (currentStatus.status_user === '출근' || currentStatus.status_user === '일등' || currentStatus.status_user === '지각') {
+      const startTime = new Date(currentStatus.timestamp_user);
       
-      if (!operationHours) return null;
+      const timer = setInterval(() => {
+        const now = new Date();
+        const diff = Math.floor((now - startTime) / 1000);
+        setTimeElapsed(diff);
+      }, 1000);
 
-      const [startHour, startMinute, startSecond] = operationHours[0].split(':').map(Number);
-      const startTime = new Date();
-      startTime.setHours(startHour, startMinute, startSecond);
+      setTimerStatus('counting');
 
-      const [attendHour, attendMinute] = selectedSubscription.attendtime_coffice.split(':').map(Number);
-      const attendTime = new Date();
-      attendTime.setHours(attendHour, attendMinute, 0);
-      
-      const totalCountdownTime = attendTime - startTime;
+      return () => clearInterval(timer);
+    }
 
-      if (now < startTime) {
-        setTimerStatus('waiting');
-        return totalCountdownTime;
-      } else if (now < attendTime) {
-        setTimerStatus('counting');
-        return attendTime - now;
-      } else {
-        setTimerStatus('ended');
-        return 0;
-      }
-    };
+    // 그 외 상태일 때
+    setTimeElapsed(0);
+    setTimerStatus('waiting');
+  }, [selectedSubscription, selectedDate, memberStatus, selectedUserData]);
 
-    const timer = setInterval(() => {
-      const remainingTime = calculateTimes();
-      setTimeLeft(remainingTime);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [selectedSubscription, officeInfo, selectedDate]);
-
-  const formatTime = (ms) => {
-    if (!isExactToday) return { hours: '--', minutes: '--', seconds: '--' };  // isExactToday가 false일 때 처리
+  const formatTime = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
     
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((ms % (1000 * 60)) / 1000);
     return {
-      hours: String(Math.max(0, hours)).padStart(2, '0'),
-      minutes: String(Math.max(0, minutes)).padStart(2, '0'),
-      seconds: String(Math.max(0, seconds)).padStart(2, '0')
+      hours: String(hours).padStart(2, '0'),
+      minutes: String(minutes).padStart(2, '0'),
+      seconds: String(seconds).padStart(2, '0')
     };
   };
 
-  const time = formatTime(timeLeft || 0);
+  const time = formatTime(timeElapsed);
 
   return (
     <div className="flex flex-col items-start h-[22vh] mb-[3vh] mt-[7vh]">
       <div className="text-[20px] font-semibold text-gray-800 mt-[2vh] mb-3 px-4">
-        남은 시간
+        근무 시간
       </div>
       <div className="border-2 border-black bg-gray-100 rounded-lg p-3 w-full max-w-[320px] mx-auto h-[12vh]">
         <div className="flex justify-center items-center h-full">
@@ -290,13 +262,13 @@ const MemberCard = ({
   };
 
   // 근무 시간 포맷팅 함수 수정
-  const formatWorkingTime = (minutes) => {
-    if (!minutes) return { time: '', label: '' };
-    const mins = parseInt(minutes);
-    const hours = Math.floor(mins / 60);
-    const remainingMinutes = mins % 60;
+  const formatWorkingTime = (seconds) => {
+    if (!seconds) return { time: '', label: '' };
+    const totalSeconds = parseInt(seconds);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
     return {
-      time: `${hours}시간 ${remainingMinutes}분`,
+      time: `${hours}시간 ${minutes}분`,
       label: '근무'
     };
   };
@@ -1733,17 +1705,12 @@ export default function Home() {
         throw new Error('출근 기록을 찾을 수 없습니다.');
       }
 
-      // 근무 시간 계산 (분 단위)
+      // 근무 시간 계산 (초 단위)
       const attendanceTime = new Date(attendanceEvent.timestamp_event);
       const leaveTime = new Date();
-      const workingMinutes = Math.floor((leaveTime - attendanceTime) / (1000 * 60));
+      const workingSeconds = Math.floor((leaveTime - attendanceTime) / 1000);
 
-      // 시간과 분으로 변환 (memberStatus용)
-      const hours = Math.floor(workingMinutes / 60);
-      const minutes = workingMinutes % 60;
-      const workingTimeMessage = `${hours}시간 ${minutes}분 근무`;
-
-      // 퇴근 이벤트 생성 (event_log에는 분 단위로 저장)
+      // 퇴근 이벤트 생성 (event_log에는 초 단위로 저장)
       const { data, error } = await supabase
         .from('event_log')
         .insert([
@@ -1751,7 +1718,7 @@ export default function Home() {
             id_coffice: selectedSubscription.id_coffice.toString(),
             id_user: selectedUserData.id_user.toString(),
             type_event: '퇴근',
-            message_event: workingMinutes.toString(), // 분 단위로 저장
+            message_event: workingSeconds.toString(), // 초 단위로 저장
             date_event: selectedDate,
             timestamp_event: leaveTime.toISOString()
           }
@@ -1772,14 +1739,14 @@ export default function Home() {
         newStatus[selectedSubscription.id_coffice].dates[selectedDate].members[selectedUserData.id_user] = {
           id_user: selectedUserData.id_user,
           status_user: '퇴근',
-          message_user: workingTimeMessage, // 'HH시간 MM분 근무' 형식으로 저장
+          message_user: workingSeconds.toString(), // 초 단위로 저장
           timestamp_user: leaveTime.toISOString()
         };
 
         return newStatus;
       });
 
-      console.log('퇴근 처리 완료:', workingTimeMessage);
+      console.log('퇴근 처리 완료:', workingSeconds);
 
       // 성공 메시지 표시
       const successMessage = document.createElement('div');
@@ -1976,6 +1943,8 @@ export default function Home() {
                           selectedSubscription={selectedSubscription} 
                           officeInfo={officeInfo}
                           selectedDate={selectedDate}
+                          memberStatus={memberStatus}
+                          selectedUserData={selectedUserData}
                         />
                       </div>
 
