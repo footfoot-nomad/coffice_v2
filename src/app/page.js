@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
-import ProfileEditModal from '@/components/ProfileEditModal'
-import ProfileCharacter from '@/components/ProfileCharacter'
+import { supabase } from '../lib/supabase'
+import ProfileEditModal from './components/ProfileEditModal'
+import ProfileCharacter from './components/ProfileCharacter'
 import React from 'react'
 
 // getDatesForMonth 함수를 handleSelectUser 함수 전에 정의
