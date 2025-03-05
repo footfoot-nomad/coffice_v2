@@ -1060,8 +1060,8 @@ export default function Home() {
       const closeTime = new Date();
       closeTime.setHours(closeHour, closeMinute, 0);
 
-      // 이미 출근했거나 일등인 경우 퇴근하기 버튼 활성화 (영업종료 시간 전까지)
-      if ((currentStatus === '출근' || currentStatus === '일등') && now < closeTime) {
+      // 이미 출근했거나 일등 또는 지각인 경우 퇴근하기 버튼 활성화 (영업종료 시간 전까지)
+      if ((currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') && now < closeTime) {
         setAttendanceMessage('퇴근하기');
         setIsButtonDisabled(false);
         return;
@@ -1691,27 +1691,30 @@ export default function Home() {
 
     try {
       // 현재 사용자의 출근 이벤트 찾기
-      const { data: attendanceEvent, error: fetchError } = await supabase
+      const { data: attendanceEvents, error: fetchError } = await supabase
         .from('event_log')
         .select('*')
         .eq('id_coffice', selectedSubscription.id_coffice.toString())
         .eq('id_user', selectedUserData.id_user.toString())
         .eq('date_event', selectedDate)
-        .in('type_event', ['출근', '일등'])
-        .single();
+        .in('type_event', ['출근', '일등', '지각']); // 지각도 포함
 
       if (fetchError) throw fetchError;
 
-      if (!attendanceEvent) {
+      // 출근 기록이 없는 경우
+      if (!attendanceEvents || attendanceEvents.length === 0) {
         throw new Error('출근 기록을 찾을 수 없습니다.');
       }
+
+      // 가장 최근의 출근 기록 사용
+      const attendanceEvent = attendanceEvents[0];
 
       // 근무 시간 계산 (초 단위)
       const attendanceTime = new Date(attendanceEvent.timestamp_event);
       const leaveTime = new Date();
       const workingSeconds = Math.floor((leaveTime - attendanceTime) / 1000);
 
-      // 퇴근 이벤트 생성 (event_log에는 초 단위로 저장)
+      // 퇴근 이벤트 생성
       const { data, error } = await supabase
         .from('event_log')
         .insert([
@@ -1719,7 +1722,7 @@ export default function Home() {
             id_coffice: selectedSubscription.id_coffice.toString(),
             id_user: selectedUserData.id_user.toString(),
             type_event: '퇴근',
-            message_event: workingSeconds.toString(), // 초 단위로 저장
+            message_event: workingSeconds.toString(),
             date_event: selectedDate,
             timestamp_event: leaveTime.toISOString()
           }
@@ -2104,17 +2107,18 @@ export default function Home() {
                           
                           const isToday = today.getTime() === selectedDateObj.getTime();
                           
+                          // 현재 사용자의 상태 확인
+                          const currentStatus = memberStatus[selectedSubscription?.id_coffice]
+                            ?.dates[selectedDate]
+                            ?.members[selectedUserData?.id_user]
+                            ?.status_user;
+                          
                           return isToday ? (
                             <div className="flex justify-center mb-[2vh]">
                               <button
                                 onClick={() => {
-                                  const currentStatus = memberStatus[selectedSubscription.id_coffice]
-                                    ?.dates[selectedDate]
-                                    ?.members[selectedUserData.id_user]
-                                    ?.status_user;
-                                  
-                                  if (currentStatus === '출근' || currentStatus === '일등') {
-                                    setShowLeaveConfirmModal(true); // 퇴근 시 컨펌 모달 표시
+                                  if (currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') {
+                                    setShowLeaveConfirmModal(true);
                                   } else {
                                     createAttendanceEvent();
                                   }
@@ -2127,7 +2131,9 @@ export default function Home() {
                                   relative
                                   ${isButtonDisabled || isLoading
                                     ? 'bg-[#DEDEDE] text-black hover:bg-[#DEDEDE] border-1 border-black' 
-                                    : 'bg-[#FFFF00] text-black hover:bg-[#FFFF00] border-1 border-black'
+                                    : currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각'
+                                      ? 'bg-[#64C1FF] text-black hover:bg-[#64C1FF] border-1 border-black'
+                                      : 'bg-[#FFFF00] text-black hover:bg-[#FFFF00] border-1 border-black'
                                   }
                                 `}
                               >
@@ -2219,8 +2225,8 @@ export default function Home() {
             className="bg-white rounded-2xl p-8 w-[320px] max-w-[90vw]"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold text-center mb-6">퇴근 확인</h2>
-            <p className="text-center mb-8 whitespace-pre-line">
+            <h2 className="text-xl font-bold text-center mb-6 text-black">퇴근 확인</h2>
+            <p className="text-center mb-8 whitespace-pre-line text-black">
               퇴근하면 오늘은 다시 출근할 수 없어요!{'\n'}
               정말 퇴근하나요?
             </p>
