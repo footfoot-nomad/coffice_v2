@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 const AuthForm = ({ onAuthSuccess }) => {
@@ -72,6 +72,16 @@ const AuthForm = ({ onAuthSuccess }) => {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        onAuthSuccess()
+      }
+    }
+    checkAuth()
+  }, [onAuthSuccess])
 
   return (
     <div className="fixed inset-0 bg-[#64c1ff] flex flex-col min-h-screen">

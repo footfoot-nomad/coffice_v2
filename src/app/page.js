@@ -8,6 +8,7 @@ import React from 'react'
 import AuthForm from './components/Auth'
 import Timer from './components/Timer'
 import MemberCard from './components/MemberCard'
+import AttendanceButton from './components/AttendanceButton'
 
 // getDatesForMonth 함수를 handleSelectUser 함수 전에 정의
 const getDatesForMonth = (yearMonth, dayOfWeek) => {
@@ -54,8 +55,6 @@ export default function Home() {
   const [memberStatus, setMemberStatus] = useState({})
   const [subscriptionInfo, setSubscriptionInfo] = useState(null)
   const [timerStatus, setTimerStatus] = useState('waiting'); // 'waiting', 'counting', 'ended'
-  const [attendanceMessage, setAttendanceMessage] = useState('');
-  const [isButtonDisabled, setIsButtonDisabled] = useState(true);
   const [cofficeMessage, setCofficeMessage] = useState('오늘도 함께 코피스~');
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [newMessage, setNewMessage] = useState('');
@@ -337,89 +336,7 @@ export default function Home() {
     console.log('memberStatus 변경됨:', memberStatus);
   }, [memberStatus]);
 
-  // 출근 버튼 상태 관리
-  useEffect(() => {
-    if (!selectedSubscription || !officeInfo || !selectedDate) return;
-
-    const checkAttendanceStatus = () => {
-      const now = new Date();
-      const selectedDateObj = new Date(selectedDate);
-      
-      // 날짜 비교를 위해 시간을 00:00:00으로 설정
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      selectedDateObj.setHours(0, 0, 0, 0);
-
-      // 현재 사용자의 출근 상태 확인
-      const currentStatus = memberStatus[selectedSubscription.id_coffice]
-        ?.dates[selectedDate]
-        ?.members[selectedUserData?.id_user]
-        ?.status_user;
-
-      // 영업 시간 정보 가져오기
-      const dayMapping = {
-        '월': 'mon_operation_office',
-        '화': 'tue_operation_office',
-        '수': 'wed_operation_office',
-        '목': 'thu_operation_office',
-        '금': 'fri_operation_office',
-        '토': 'sat_operation_office',
-        '일': 'sun_operation_office'
-      };
-
-      const officeId = selectedSubscription?.coffices?.offices?.id_office;
-      const operationHours = officeId ? officeInfo[officeId]?.[dayMapping[selectedSubscription.day_coffice]] : null;
-      
-      if (!operationHours) return;
-
-      const [openTimeStr, closeTimeStr] = operationHours;
-      const [closeHour, closeMinute] = closeTimeStr.split(':').map(Number);
-      const closeTime = new Date();
-      closeTime.setHours(closeHour, closeMinute, 0);
-
-      // 이미 출근했거나 일등 또는 지각인 경우 퇴근하기 버튼 활성화 (영업종료 시간 전까지)
-      if (currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') {
-        setAttendanceMessage('퇴근하기');
-        setIsButtonDisabled(false);
-        return;
-      }
-
-      // 이미 퇴근한 경우
-      if (currentStatus === '퇴근') {
-        setAttendanceMessage('퇴근 완료');
-        setIsButtonDisabled(true);
-        return;
-      }
-
-      // 기존 로직 유지
-      if (selectedDateObj > today) {
-        setAttendanceMessage('출근하기');
-        setIsButtonDisabled(true);
-      } else if (selectedDateObj < today) {
-        setAttendanceMessage('지난 날짜예요.');
-        setIsButtonDisabled(true);
-      } else {
-        const [openHour, openMinute] = openTimeStr.split(':').map(Number);
-        const openTime = new Date();
-        openTime.setHours(openHour, openMinute, 0);
-
-        if (now < openTime) {
-          setAttendanceMessage('출근하기');
-          setIsButtonDisabled(true);
-        } else {
-          setAttendanceMessage('출근하기');
-          setIsButtonDisabled(false);
-        }
-      }
-    };
-
-    const interval = setInterval(checkAttendanceStatus, 1000);
-    checkAttendanceStatus();
-
-    return () => clearInterval(interval);
-  }, [selectedSubscription, officeInfo, selectedDate, memberStatus, selectedUserData]);
-
-  // handleSelectUser 대신 handleAuthSuccess 사용
+  // handleAuthSuccess 사용
   const handleAuthSuccess = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -670,116 +587,6 @@ export default function Home() {
     checkAuth()
   }, [])
 
-  // createAttendanceEvent 함수 수정
-  const createAttendanceEvent = async () => {
-    if (!selectedSubscription || !selectedDate) return;
-
-    setIsLoading(true); // 로딩 시작
-
-    try {
-      // 현재 GPS 위치 가져오기
-      const getCurrentPosition = () => {
-        return new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject);
-        });
-      };
-
-      // 3초 대기를 위한 Promise
-      const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-      // GPS 위치 가져오기와 3초 대기를 동시에 실행
-      const [position] = await Promise.all([
-        getCurrentPosition(),
-        wait(3000)
-      ]);
-
-      const currentLat = position.coords.latitude;
-      const currentLon = position.coords.longitude;
-
-      // 오피스 GPS 정보 (이미 배열 형태)
-      const [officeLat, officeLon] = officeInfo[selectedSubscription.id_office].gps_office;
-
-      // 거리 계산
-      const distance = calculateDistance(currentLat, currentLon, officeLat, officeLon);
-
-      if (distance > 100) {
-        setIsLoading(false);
-        const warningMessage = document.createElement('div');
-        warningMessage.className = 'alert alert-warning w-[288px] fixed top-[calc(70vh+50px)] left-1/2 -translate-x-1/2 z-50';
-        warningMessage.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>코피스 근처로 이동해 주세요.</span>
-        `;
-        
-        document.body.appendChild(warningMessage);
-
-        setTimeout(() => {
-          warningMessage.remove();
-        }, 3000);
-
-        return;
-      }
-
-      // ID를 정수로 변환
-      const cofficeId = parseInt(selectedSubscription.id_coffice);
-      const userId = parseInt(selectedUserData.id_user);
-
-      if (isNaN(cofficeId) || isNaN(userId)) {
-        throw new Error('유효하지 않은 ID 형식입니다.');
-      }
-
-      // 기존 출근 로직
-      const { data: existingEvents, error: fetchError } = await supabase
-        .from('event_log')
-        .select('*')
-        .eq('id_coffice', selectedSubscription.id_coffice.toString()) // toString() 추가
-        .eq('date_event', selectedDate)
-        .in('type_event', ['출근', '일등']);
-
-      if (fetchError) throw fetchError;
-
-      // 첫 번째 출근자는 '일등', 이후는 '출근'으로 설정
-      const attendanceType = existingEvents?.length === 0 ? '일등' : '출근';
-
-      const { data, error } = await supabase
-        .from('event_log')
-        .insert([
-          {
-            id_coffice: selectedSubscription.id_coffice.toString(), // toString() 추가
-            id_user: selectedUserData.id_user.toString(), // toString() 추가
-            type_event: attendanceType,
-            message_event: null,
-            date_event: selectedDate,
-            timestamp_event: new Date().toISOString()
-          }
-        ]);
-
-      if (error) throw error;
-      console.log('출근 이벤트 생성 성공:', data);
-
-    } catch (error) {
-      console.error('출근 이벤트 생성 실패:', error);
-      const warningMessage = document.createElement('div');
-      warningMessage.className = 'alert alert-warning w-[288px] fixed top-[calc(70vh+100px)] left-1/2 -translate-x-1/2 z-50';
-      warningMessage.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-        <span>위치 정보를 확인할 수 없습니다.</span>
-      `;
-      
-      document.body.appendChild(warningMessage);
-
-      setTimeout(() => {
-        warningMessage.remove();
-      }, 3000);
-    } finally {
-      setIsLoading(false); // 로딩 종료
-    }
-  };
-
   // 메시지 업데이트 함수 수정
   const updateCofficeMessage = async () => {
     if (!selectedSubscription) return;
@@ -1000,103 +807,6 @@ export default function Home() {
 
     return () => channel.unsubscribe();
   }, [selectedSubscription]);
-
-  const createLeaveEvent = async () => {
-    if (!selectedSubscription || !selectedDate) return;
-
-    setIsLoading(true);
-
-    try {
-      // 현재 사용자의 출근 이벤트 찾기
-      const { data: attendanceEvents, error: fetchError } = await supabase
-        .from('event_log')
-        .select('*')
-        .eq('id_coffice', selectedSubscription.id_coffice.toString())
-        .eq('id_user', selectedUserData.id_user.toString())
-        .eq('date_event', selectedDate)
-        .in('type_event', ['출근', '일등', '지각']); // 지각도 포함
-
-      if (fetchError) throw fetchError;
-
-      // 출근 기록이 없는 경우
-      if (!attendanceEvents || attendanceEvents.length === 0) {
-        throw new Error('출근 기록을 찾을 수 없습니다.');
-      }
-
-      // 가장 최근의 출근 기록 사용
-      const attendanceEvent = attendanceEvents[0];
-
-      // 근무 시간 계산 (초 단위)
-      const attendanceTime = new Date(attendanceEvent.timestamp_event);
-      const leaveTime = new Date();
-      const workingSeconds = Math.floor((leaveTime - attendanceTime) / 1000);
-
-      // 퇴근 이벤트 생성
-      const { data, error } = await supabase
-        .from('event_log')
-        .insert([
-          {
-            id_coffice: selectedSubscription.id_coffice.toString(),
-            id_user: selectedUserData.id_user.toString(),
-            type_event: '퇴근',
-            message_event: workingSeconds.toString(),
-            date_event: selectedDate,
-            timestamp_event: leaveTime.toISOString()
-          }
-        ]);
-
-      if (error) throw error;
-
-      // memberStatus 업데이트
-      setMemberStatus(prevStatus => {
-        const newStatus = { ...prevStatus };
-        if (!newStatus[selectedSubscription.id_coffice]) {
-          newStatus[selectedSubscription.id_coffice] = { dates: {} };
-        }
-        if (!newStatus[selectedSubscription.id_coffice].dates[selectedDate]) {
-          newStatus[selectedSubscription.id_coffice].dates[selectedDate] = { members: {} };
-        }
-
-        newStatus[selectedSubscription.id_coffice].dates[selectedDate].members[selectedUserData.id_user] = {
-          id_user: selectedUserData.id_user,
-          status_user: '퇴근',
-          message_user: workingSeconds.toString(), // 초 단위로 저장
-          timestamp_user: leaveTime.toISOString()
-        };
-
-        return newStatus;
-      });
-
-      console.log('퇴근 처리 완료:', workingSeconds);
-
-      // 성공 메시지 표시
-      const successMessage = document.createElement('div');
-      successMessage.className = 'alert alert-success w-[288px] fixed top-[calc(70vh+50px)] left-1/2 -translate-x-1/2 z-50';
-      successMessage.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>퇴근 처리되었습니다.</span>
-      `;
-      document.body.appendChild(successMessage);
-      setTimeout(() => successMessage.remove(), 3000);
-
-    } catch (error) {
-      console.error('퇴근 처리 실패:', error);
-      const errorMessage = document.createElement('div');
-      errorMessage.className = 'alert alert-error w-[288px] fixed top-[calc(70vh+50px)] left-1/2 -translate-x-1/2 z-50';
-      errorMessage.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>퇴근 처리에 실패했습니다.</span>
-      `;
-      document.body.appendChild(errorMessage);
-      setTimeout(() => errorMessage.remove(), 3000);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="relative"> {/* 기존 최상위 div */}
@@ -1417,53 +1127,24 @@ export default function Home() {
                         {(() => {
                           const today = new Date();
                           const selectedDateObj = new Date(selectedDate);
-                          
-                          // 날짜 비교를 위해 시간을 00:00:00으로 설정
                           today.setHours(0, 0, 0, 0);
                           selectedDateObj.setHours(0, 0, 0, 0);
-                          
                           const isToday = today.getTime() === selectedDateObj.getTime();
                           
-                          // 현재 사용자의 상태 확인
-                          const currentStatus = memberStatus[selectedSubscription?.id_coffice]
-                            ?.dates[selectedDate]
-                            ?.members[selectedUserData?.id_user]
-                            ?.status_user;
+                          if (!isToday) return null;
                           
-                          return isToday ? (
-                            <div className="flex justify-center mb-[2vh]">
-                              <button
-                                onClick={() => {
-                                  if (currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') {
-                                    setShowLeaveConfirmModal(true);
-                                  } else {
-                                    createAttendanceEvent();
-                                  }
-                                }}
-                                disabled={isButtonDisabled || isLoading}
-                                className={`
-                                  btn btn-circle w-[288px] h-[48px] mx-auto block
-                                  border-1 border-black normal-case
-                                  shadow-lg hover:shadow-md transition-shadow
-                                  relative
-                                  ${isButtonDisabled || isLoading
-                                    ? 'bg-[#DEDEDE] text-black hover:bg-[#DEDEDE] border-1 border-black' 
-                                    : currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각'
-                                      ? 'bg-[#64C1FF] text-black hover:bg-[#64C1FF] border-1 border-black'
-                                      : 'bg-[#FFFF00] text-black hover:bg-[#FFFF00] border-1 border-black'
-                                  }
-                                `}
-                              >
-                                <div className="flex items-center justify-center gap-2">
-                                  {isLoading ? (
-                                    <span className="loading loading-spinner loading-sm"></span>
-                                  ) : (
-                                    <span className="text-[16px] font-semibold text-black">{attendanceMessage}</span>
-                                  )}
-                                </div>
-                              </button>
-                            </div>
-                          ) : null;
+                          return (
+                            <AttendanceButton
+                              selectedSubscription={selectedSubscription}
+                              selectedDate={selectedDate}
+                              selectedUserData={selectedUserData}
+                              memberStatus={memberStatus}
+                              officeInfo={officeInfo}
+                              onStatusUpdate={(newStatus) => {
+                                setMemberStatus(newStatus)
+                              }}
+                            />
+                          );
                         })()}
                       </div>
                     </>
@@ -1557,7 +1238,6 @@ export default function Home() {
               <button
                 onClick={() => {
                   setShowLeaveConfirmModal(false);
-                  createLeaveEvent();
                 }}
                 className="btn btn-primary flex-1"
               >

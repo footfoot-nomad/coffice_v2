@@ -1,0 +1,216 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+
+const AttendanceButton = ({
+  selectedSubscription,
+  officeInfo,
+  selectedDate,
+  memberStatus,
+  selectedUserData,
+  onAttendanceClick,
+  isLoading,
+  setIsLoading
+}) => {
+  const [isButtonDisabled, setIsButtonDisabled] = useState(true);
+  const [attendanceMessage, setAttendanceMessage] = useState('');
+
+  const createAttendanceEvent = async () => {
+    if (!selectedSubscription || !selectedDate) return;
+
+    setIsLoading(true);
+
+    try {
+      const getCurrentPosition = () => {
+        return new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+      };
+
+      const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+      const [position] = await Promise.all([
+        getCurrentPosition(),
+        wait(3000)
+      ]);
+
+      const currentLat = position.coords.latitude;
+      const currentLon = position.coords.longitude;
+      const [officeLat, officeLon] = officeInfo[selectedSubscription.id_office].gps_office;
+      const distance = calculateDistance(currentLat, currentLon, officeLat, officeLon);
+
+      if (distance > 100) {
+        setIsLoading(false);
+        showWarningMessage('코피스 근처로 이동해 주세요.');
+        return;
+      }
+
+      const cofficeId = parseInt(selectedSubscription.id_coffice);
+      const userId = parseInt(selectedUserData.id_user);
+
+      if (isNaN(cofficeId) || isNaN(userId)) {
+        throw new Error('유효하지 않은 ID 형식입니다.');
+      }
+
+      const { data: existingEvents, error: fetchError } = await supabase
+        .from('event_log')
+        .select('*')
+        .eq('id_coffice', selectedSubscription.id_coffice.toString())
+        .eq('date_event', selectedDate)
+        .in('type_event', ['출근', '일등']);
+
+      if (fetchError) throw fetchError;
+
+      const attendanceType = existingEvents?.length === 0 ? '일등' : '출근';
+
+      const { data, error } = await supabase
+        .from('event_log')
+        .insert([{
+          id_coffice: selectedSubscription.id_coffice.toString(),
+          id_user: selectedUserData.id_user.toString(),
+          type_event: attendanceType,
+          message_event: null,
+          date_event: selectedDate,
+          timestamp_event: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+      console.log('출근 이벤트 생성 성공:', data);
+
+    } catch (error) {
+      console.error('출근 이벤트 생성 실패:', error);
+      showWarningMessage('위치 정보를 확인할 수 없습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const showWarningMessage = (message) => {
+    const warningMessage = document.createElement('div');
+    warningMessage.className = 'alert alert-warning w-[288px] fixed top-[calc(70vh+50px)] left-1/2 -translate-x-1/2 z-50';
+    warningMessage.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      <span>${message}</span>
+    `;
+    
+    document.body.appendChild(warningMessage);
+    setTimeout(() => warningMessage.remove(), 3000);
+  };
+
+  // 출근 버튼 상태 관리
+  useEffect(() => {
+    if (!selectedSubscription || !officeInfo || !selectedDate) return;
+
+    const checkAttendanceStatus = () => {
+      const now = new Date();
+      const selectedDateObj = new Date(selectedDate);
+      
+      // 날짜 비교를 위해 시간을 00:00:00으로 설정
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDateObj.setHours(0, 0, 0, 0);
+
+      // 현재 사용자의 출근 상태 확인
+      const currentStatus = memberStatus[selectedSubscription.id_coffice]
+        ?.dates[selectedDate]
+        ?.members[selectedUserData?.id_user]
+        ?.status_user;
+
+      // 영업 시간 정보 가져오기
+      const dayMapping = {
+        '월': 'mon_operation_office',
+        '화': 'tue_operation_office',
+        '수': 'wed_operation_office',
+        '목': 'thu_operation_office',
+        '금': 'fri_operation_office',
+        '토': 'sat_operation_office',
+        '일': 'sun_operation_office'
+      };
+
+      const officeId = selectedSubscription?.coffices?.offices?.id_office;
+      const operationHours = officeId ? officeInfo[officeId]?.[dayMapping[selectedSubscription.day_coffice]] : null;
+      
+      if (!operationHours) return;
+
+      const [openTimeStr, closeTimeStr] = operationHours;
+      const [closeHour, closeMinute] = closeTimeStr.split(':').map(Number);
+      const closeTime = new Date();
+      closeTime.setHours(closeHour, closeMinute, 0);
+
+      // 이미 출근했거나 일등 또는 지각인 경우 퇴근하기 버튼 활성화 (영업종료 시간 전까지)
+      if (currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') {
+        setAttendanceMessage('퇴근하기');
+        setIsButtonDisabled(false);
+        return;
+      }
+
+      // 이미 퇴근한 경우
+      if (currentStatus === '퇴근') {
+        setAttendanceMessage('퇴근 완료');
+        setIsButtonDisabled(true);
+        return;
+      }
+
+      // 기존 로직 유지
+      if (selectedDateObj > today) {
+        setAttendanceMessage('출근하기');
+        setIsButtonDisabled(true);
+      } else if (selectedDateObj < today) {
+        setAttendanceMessage('지난 날짜예요.');
+        setIsButtonDisabled(true);
+      } else {
+        const [openHour, openMinute] = openTimeStr.split(':').map(Number);
+        const openTime = new Date();
+        openTime.setHours(openHour, openMinute, 0);
+
+        if (now < openTime) {
+          setAttendanceMessage('출근하기');
+          setIsButtonDisabled(true);
+        } else {
+          setAttendanceMessage('출근하기');
+          setIsButtonDisabled(false);
+        }
+      }
+    };
+
+    const interval = setInterval(checkAttendanceStatus, 1000);
+    checkAttendanceStatus();
+
+    return () => clearInterval(interval);
+  }, [selectedSubscription, officeInfo, selectedDate, memberStatus, selectedUserData]);
+
+  return (
+    <div className="flex justify-center mb-[2vh]">
+      <button
+        onClick={onAttendanceClick}
+        disabled={isButtonDisabled || isLoading}
+        className={`
+          btn btn-circle w-[288px] h-[48px] mx-auto block
+          border-1 border-black normal-case
+          shadow-lg hover:shadow-md transition-shadow
+          relative
+          ${isButtonDisabled || isLoading
+            ? 'bg-[#DEDEDE] text-black hover:bg-[#DEDEDE] border-1 border-black' 
+            : memberStatus[selectedSubscription?.id_coffice]?.dates[selectedDate]?.members[selectedUserData?.id_user]?.status_user === '출근' || 
+              memberStatus[selectedSubscription?.id_coffice]?.dates[selectedDate]?.members[selectedUserData?.id_user]?.status_user === '일등' || 
+              memberStatus[selectedSubscription?.id_coffice]?.dates[selectedDate]?.members[selectedUserData?.id_user]?.status_user === '지각'
+              ? 'bg-[#64C1FF] text-black hover:bg-[#64C1FF] border-1 border-black'
+              : 'bg-[#FFFF00] text-black hover:bg-[#FFFF00] border-1 border-black'
+          }
+        `}
+      >
+        <div className="flex items-center justify-center gap-2">
+          {isLoading ? (
+            <span className="loading loading-spinner loading-sm"></span>
+          ) : (
+            <span className="text-[16px] font-semibold text-black">{attendanceMessage}</span>
+          )}
+        </div>
+      </button>
+    </div>
+  )
+}
+
+export default AttendanceButton
