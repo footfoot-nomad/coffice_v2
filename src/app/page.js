@@ -743,6 +743,7 @@ export default function Home() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [memberInfo, setMemberInfo] = useState([])
   const [isLoading, setIsLoading] = useState(false);
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false); // 퇴근 컨펌 모달 상태 추가
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -2113,7 +2114,7 @@ export default function Home() {
                                     ?.status_user;
                                   
                                   if (currentStatus === '출근' || currentStatus === '일등') {
-                                    createLeaveEvent();
+                                    setShowLeaveConfirmModal(true); // 퇴근 시 컨펌 모달 표시
                                   } else {
                                     createAttendanceEvent();
                                   }
@@ -2203,6 +2204,41 @@ export default function Home() {
                 className="flex-1 btn bg-[#FFFF00] hover:bg-[#FFFF00] text-black border-1 border-black"
               >
                 저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLeaveConfirmModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"
+          onClick={() => setShowLeaveConfirmModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl p-8 w-[320px] max-w-[90vw]"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold text-center mb-6">퇴근 확인</h2>
+            <p className="text-center mb-8 whitespace-pre-line">
+              퇴근하면 오늘은 다시 출근할 수 없어요!{'\n'}
+              정말 퇴근하나요?
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => setShowLeaveConfirmModal(false)}
+                className="btn btn-neutral flex-1"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  setShowLeaveConfirmModal(false);
+                  createLeaveEvent();
+                }}
+                className="btn btn-primary flex-1"
+              >
+                확인
               </button>
             </div>
           </div>
