@@ -353,7 +353,7 @@ export default function Home() {
       // 현재 사용자의 출근 상태 확인
       const currentStatus = memberStatus[selectedSubscription.id_coffice]
         ?.dates[selectedDate]
-        ?.members[selectedUserData.id_user]
+        ?.members[selectedUserData?.id_user]
         ?.status_user;
 
       // 영업 시간 정보 가져오기
@@ -372,16 +372,13 @@ export default function Home() {
       
       if (!operationHours) return;
 
-      // operationHours가 배열 형태로 들어오는 경우 처리
       const [openTimeStr, closeTimeStr] = operationHours;
-      
-      // 영업 종료 시간 설정
       const [closeHour, closeMinute] = closeTimeStr.split(':').map(Number);
       const closeTime = new Date();
       closeTime.setHours(closeHour, closeMinute, 0);
 
       // 이미 출근했거나 일등 또는 지각인 경우 퇴근하기 버튼 활성화 (영업종료 시간 전까지)
-      if ((currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') && now < closeTime) {
+      if (currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') {
         setAttendanceMessage('퇴근하기');
         setIsButtonDisabled(false);
         return;

@@ -5,43 +5,211 @@ import { useState, useEffect } from 'react'
 const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, selectedUserData }) => {
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [timerStatus, setTimerStatus] = useState('waiting');
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // 현재 시각을 1초마다 업데이트하는 useEffect
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now);
+    }, 1000);
+
+    return () => clearInterval(timeInterval);
+  }, []);
 
   useEffect(() => {
-    if (!selectedSubscription || !selectedDate || !memberStatus || !selectedUserData) return;
-
-    const currentStatus = memberStatus[selectedSubscription.id_coffice]
-      ?.dates[selectedDate]
-      ?.members[selectedUserData.id_user];
-
-    if (!currentStatus) return;
-
-    // 퇴근 상태일 때
-    if (currentStatus.status_user === '퇴근') {
-      const totalSeconds = parseInt(currentStatus.message_user);
-      setTimeElapsed(totalSeconds);
-      setTimerStatus('ended');
+    if (!selectedSubscription || !selectedDate || !memberStatus || !selectedUserData || !officeInfo) {
       return;
     }
 
-    // 출근, 일등, 지각 상태일 때
-    if (currentStatus.status_user === '출근' || currentStatus.status_user === '일등' || currentStatus.status_user === '지각') {
-      const startTime = new Date(currentStatus.timestamp_user);
-      
-      const timer = setInterval(() => {
-        const now = new Date();
-        const diff = Math.floor((now - startTime) / 1000);
-        setTimeElapsed(diff);
-      }, 1000);
+    // 선택한 날짜가 오늘인지 확인
+    const today = new Date().toISOString().split('T')[0];
+    const isToday = selectedDate === today;
 
-      setTimerStatus('counting');
+    const currentStatus = memberStatus[selectedSubscription.id_office]
+      ?.dates[selectedDate]
+      ?.members[selectedUserData.id_user];
 
-      return () => clearInterval(timer);
+    if (!currentStatus) {
+      return;
     }
 
-    // 그 외 상태일 때
-    setTimeElapsed(0);
-    setTimerStatus('waiting');
-  }, [selectedSubscription, selectedDate, memberStatus, selectedUserData]);
+    // 현재 요일 구하기 (0: 일요일, 1: 월요일, ...)
+    const currentDay = new Date().getDay();
+    const operationHours = getOperationHours(currentDay, officeInfo);
+    
+    if (!operationHours) {
+      return;
+    }
+
+    const { openTime, closeTime } = operationHours;
+    const attendTime = new Date(selectedSubscription.time_attend);
+
+    // 타이머 로직
+    const timer = setInterval(() => {
+      const now = new Date();
+      const isMidnightPassed = now.getDate() !== currentTime.getDate();
+
+      // 자정이 지난 경우 타이머 리셋
+      if (isMidnightPassed) {
+        setTimeElapsed(0);
+        setTimerStatus('waiting');
+        return;
+      }
+
+      // 퇴근 상태일 때
+      if (currentStatus.status_user === '퇴근') {
+        const attendanceEvent = memberStatus[selectedSubscription.id_office]
+          ?.event_log?.find(event => 
+            (event.type_event === '출근' || event.type_event === '일등' || event.type_event === '지각') &&
+            event.id_office === selectedSubscription.id_office &&
+            event.id_user === selectedUserData.id_user
+          );
+
+        const leaveEvent = memberStatus[selectedSubscription.id_office]
+          ?.event_log?.find(event => 
+            event.type_event === '퇴근' &&
+            event.id_office === selectedSubscription.id_office &&
+            event.id_user === selectedUserData.id_user
+          );
+
+        if (attendanceEvent && leaveEvent) {
+          const workDuration = Math.floor(
+            (new Date(leaveEvent.timestamp_event) - new Date(attendanceEvent.timestamp_event)) / 1000
+          );
+          setTimeElapsed(workDuration);
+          setTimerStatus('ended');
+        }
+        return;
+      }
+
+      // 출근/일등/지각 상태일 때
+      if (['출근', '일등', '지각'].includes(currentStatus.status_user)) {
+        const attendanceEvent = memberStatus[selectedSubscription.id_office]
+          ?.event_log?.find(event => 
+            (event.type_event === currentStatus.status_user) &&
+            event.id_office === selectedSubscription.id_office &&
+            event.id_user === selectedUserData.id_user
+          );
+
+        if (attendanceEvent) {
+          const startTime = new Date(attendanceEvent.timestamp_event);
+          const elapsed = Math.floor((now - startTime) / 1000);
+          setTimeElapsed(elapsed);
+          setTimerStatus('counting');
+        }
+        return;
+      }
+
+      // 대기 상태일 때
+      if (!isToday) {
+        setTimeElapsed(0);
+        setTimerStatus('waiting');
+        return;
+      }
+
+      // 오피스 오픈 전
+      if (now < openTime) {
+        const waitTime = Math.floor((attendTime - openTime) / 1000);
+        setTimeElapsed(Math.abs(waitTime));
+        setTimerStatus('waiting');
+        return;
+      }
+
+      // 오피스 오픈 후, 출근 시간 전
+      if (now >= openTime && now < attendTime) {
+        const remainingTime = Math.floor((attendTime - now) / 1000);
+        setTimeElapsed(remainingTime);
+        setTimerStatus('counting_down');
+        return;
+      }
+
+      // 출근 시간 이후
+      if (now >= attendTime) {
+        setTimeElapsed(0);
+        setTimerStatus('waiting');
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [selectedSubscription, selectedDate, memberStatus, selectedUserData, officeInfo, currentTime]);
+
+  // 요일별 운영 시간 가져오기
+  const getOperationHours = (day, officeInfo) => {
+    console.log('==== getOperationHours 시작 ====');
+    console.log('입력값:', { 
+      day, 
+      officeInfo,
+      selectedOfficeId: selectedSubscription.id_office
+    });
+
+    const dayMap = {
+      0: 'sun',
+      1: 'mon',
+      2: 'tue',
+      3: 'wed',
+      4: 'thu',
+      5: 'fri',
+      6: 'sat'
+    };
+
+    const dayString = dayMap[day];
+    const operationKey = `${dayString}_operation_office`;
+    
+    console.log('운영시간 조회:', {
+      dayString,
+      operationKey,
+      availableKeys: Object.keys(officeInfo)
+    });
+
+    // 선택된 오피스의 운영 시간 찾기
+    const selectedOfficeHours = Object.values(officeInfo).find(office => 
+      office.id_office === selectedSubscription.id_office
+    );
+
+    if (!selectedOfficeHours) {
+      console.log('선택된 오피스의 운영 시간을 찾을 수 없음:', {
+        searchedId: selectedSubscription.id_office,
+        availableOffices: Object.values(officeInfo).map(o => o.id_office)
+      });
+      return null;
+    }
+
+    const hours = selectedOfficeHours[operationKey];
+    console.log('운영시간 원본 데이터:', hours);
+
+    if (!hours || !Array.isArray(hours) || hours.length !== 2) {
+      console.log('운영시간 데이터 유효성 검사 실패:', {
+        exists: !!hours,
+        isArray: Array.isArray(hours),
+        length: hours?.length
+      });
+      return null;
+    }
+
+    try {
+      const today = new Date();
+      const [openTime, closeTime] = hours.map(timeStr => {
+        console.log('시간 문자열 파싱:', timeStr);
+        const [hour, minute, second] = timeStr.split(':').map(num => parseInt(num));
+        console.log('파싱된 시간 컴포넌트:', { hour, minute, second });
+        const date = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour, minute, second);
+        console.log('생성된 Date 객체:', date.toLocaleString());
+        return date;
+      });
+
+      console.log('최종 운영시간:', {
+        officeId: selectedSubscription.id_office,
+        openTime: openTime.toLocaleString(),
+        closeTime: closeTime.toLocaleString()
+      });
+
+      return { openTime, closeTime };
+    } catch (error) {
+      console.error('운영시간 파싱 중 오류 발생:', error);
+      return null;
+    }
+  };
 
   const formatTime = (totalSeconds) => {
     const hours = Math.floor(totalSeconds / 3600);
