@@ -46,9 +46,10 @@ const MemberCard = ({
 
   // 타임스탬프 포맷팅
   const formatTimestamp = (timestamp) => {
-    const timeStr = timestamp.split('T')[1];
-    const [hours, minutes] = timeStr.split(':');
-    return `${parseInt(hours)}시 ${parseInt(minutes)}분 출근`;
+    const date = new Date(timestamp);  // 이미 processTimestampEvent에서 조정된 시간
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    return `${hours}시 ${minutes}분 출근`;
   };
 
   // 상태에 따른 색상을 반환하는 함수 추가

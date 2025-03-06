@@ -11,6 +11,13 @@ import MemberCard from './components/MemberCard'
 import AttendanceButton from './components/AttendanceButton'
 
 // getDatesForMonth 함수를 handleSelectUser 함수 전에 정의
+const processTimestampEvent = (timestamp) => {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  date.setHours(date.getHours() - 9);
+  return date.toISOString();
+};
+
 const getDatesForMonth = (yearMonth, dayOfWeek) => {
   const year = 2000 + parseInt(yearMonth.substring(0, 2));
   const month = parseInt(yearMonth.substring(2, 4)) - 1; // 0-based month
@@ -200,14 +207,14 @@ export default function Home() {
           if (currentStatus) {
             // 타임스탬프를 비교하여 최신 이벤트만 적용
             const currentTimestamp = currentStatus.timestamp_user ? new Date(currentStatus.timestamp_user) : new Date(0);
-            const newTimestamp = new Date(event.timestamp_event);
+            const newTimestamp = new Date(processTimestampEvent(event.timestamp_event));
 
             if (newTimestamp > currentTimestamp) {
               newMemberStatus[officeId].dates[eventDate].members[userId] = {
                 id_user: userId,
                 status_user: event.type_event,
                 message_user: event.message_event,
-                timestamp_user: event.timestamp_event
+                timestamp_user: processTimestampEvent(event.timestamp_event)
               };
             }
           }
@@ -281,7 +288,7 @@ export default function Home() {
                 id_user,
                 status_user: type_event,
                 message_user: message_event,
-                timestamp_user: timestamp_event
+                timestamp_user: processTimestampEvent(timestamp_event)
               };
             });
 
@@ -523,14 +530,14 @@ export default function Home() {
             if (currentStatus) {
               // 타임스탬프를 비교하여 최신 이벤트만 적용
               const currentTimestamp = currentStatus.timestamp_user ? new Date(currentStatus.timestamp_user) : new Date(0);
-              const newTimestamp = new Date(event.timestamp_event);
+              const newTimestamp = new Date(processTimestampEvent(event.timestamp_event));
 
               if (newTimestamp > currentTimestamp) {
                 newMemberStatus[officeId].dates[eventDate].members[userId] = {
                   id_user: userId,
                   status_user: event.type_event,
                   message_user: event.message_event,
-                  timestamp_user: event.timestamp_event
+                  timestamp_user: processTimestampEvent(event.timestamp_event)
                 };
               }
             }
@@ -776,7 +783,6 @@ export default function Home() {
         async (payload) => {
           console.log('이벤트 로그 변경 감지:', payload);
 
-          // 상태 업데이트를 함수형 업데이트로 변경
           setMemberStatus(prevStatus => {
             const newStatus = { ...prevStatus };
             const { new: newEvent } = payload;
@@ -796,7 +802,7 @@ export default function Home() {
               id_user,
               status_user: type_event,
               message_user: message_event,
-              timestamp_user: timestamp_event
+              timestamp_user: processTimestampEvent(timestamp_event)
             };
 
             return newStatus;

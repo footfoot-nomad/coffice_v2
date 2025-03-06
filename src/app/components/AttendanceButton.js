@@ -1,6 +1,23 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+
+// 거리 계산 함수 추가
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // 지구의 반지름 (미터)
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c; // 미터 단위로 반환
+};
 
 const AttendanceButton = ({
   selectedSubscription,
@@ -8,12 +25,64 @@ const AttendanceButton = ({
   selectedDate,
   memberStatus,
   selectedUserData,
-  onAttendanceClick,
-  isLoading,
-  setIsLoading
+  onAttendanceClick
 }) => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
   const [attendanceMessage, setAttendanceMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // timestamp 전처리 함수 추가
+  const processTimestampEvent = (timestamp) => {
+    if (!timestamp) return null;
+    const date = new Date(timestamp);
+    date.setHours(date.getHours() - 9);
+    return date.toISOString();
+  };
+
+  const handleLeaveWork = async () => {
+    if (!selectedSubscription || !selectedDate) return;
+
+    try {
+      // 해당 날짜의 출근 이벤트 찾기
+      const { data: attendanceEvent, error: fetchError } = await supabase
+        .from('event_log')
+        .select('*')
+        .eq('id_coffice', selectedSubscription.id_coffice.toString())
+        .eq('id_user', selectedUserData.id_user.toString())
+        .eq('date_event', selectedDate)
+        .in('type_event', ['출근', '일등'])
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 시작 시간 처리
+      const startTimeStr = processTimestampEvent(attendanceEvent.timestamp_event);
+      const startTime = new Date(startTimeStr);
+      const endTime = new Date();
+      
+      // 근무 시간 계산 (밀리초를 초로 변환)
+      const timeElapsed = Math.floor((endTime - startTime) / 1000);
+
+      // 퇴근 이벤트 생성
+      const { error } = await supabase
+        .from('event_log')
+        .insert([{
+          id_coffice: selectedSubscription.id_coffice.toString(),
+          id_user: selectedUserData.id_user.toString(),
+          type_event: '퇴근',
+          message_event: timeElapsed.toString(),
+          date_event: selectedDate,
+          timestamp_event: endTime.toISOString()
+        }]);
+
+      if (error) throw error;
+
+    } catch (error) {
+      console.error('퇴근 처리 실패');
+      showWarningMessage('퇴근 처리에 실패했습니다.');
+      throw error; // 에러를 상위로 전파
+    }
+  };
 
   const createAttendanceEvent = async () => {
     if (!selectedSubscription || !selectedDate) return;
@@ -61,7 +130,13 @@ const AttendanceButton = ({
 
       if (fetchError) throw fetchError;
 
-      const attendanceType = existingEvents?.length === 0 ? '일등' : '출근';
+      // 가져온 이벤트 데이터의 timestamp 처리
+      const processedEvents = existingEvents?.map(event => ({
+        ...event,
+        timestamp_event: processTimestampEvent(event.timestamp_event)
+      }));
+
+      const attendanceType = processedEvents?.length === 0 ? '일등' : '출근';
 
       const { data, error } = await supabase
         .from('event_log')
@@ -80,6 +155,40 @@ const AttendanceButton = ({
     } catch (error) {
       console.error('출근 이벤트 생성 실패:', error);
       showWarningMessage('위치 정보를 확인할 수 없습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 출근/퇴근 버튼 클릭 핸들러
+  const handleAttendanceClick = async () => {
+    if (isLoading) return; // 이미 처리 중이면 중복 클릭 방지
+    
+    setIsLoading(true);
+    
+    try {
+      const currentStatus = memberStatus[selectedSubscription?.id_coffice]
+        ?.dates[selectedDate]
+        ?.members[selectedUserData?.id_user]
+        ?.status_user;
+
+      if (currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') {
+        // 퇴근 처리
+        await handleLeaveWork();
+        // 상태 업데이트를 위해 콜백 호출
+        if (onAttendanceClick) {
+          onAttendanceClick();
+        }
+      } else {
+        // 출근 처리
+        await createAttendanceEvent();
+        // 상태 업데이트를 위해 콜백 호출
+        if (onAttendanceClick) {
+          onAttendanceClick();
+        }
+      }
+    } catch (error) {
+      // 에러는 이미 각 함수에서 처리됨
     } finally {
       setIsLoading(false);
     }
@@ -184,7 +293,7 @@ const AttendanceButton = ({
   return (
     <div className="flex justify-center mb-[2vh]">
       <button
-        onClick={onAttendanceClick}
+        onClick={handleAttendanceClick}
         disabled={isButtonDisabled || isLoading}
         className={`
           btn btn-circle w-[288px] h-[48px] mx-auto block
