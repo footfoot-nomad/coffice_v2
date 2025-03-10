@@ -136,7 +136,21 @@ const AttendanceButton = ({
         timestamp_event: processTimestampEvent(event.timestamp_event)
       }));
 
-      const attendanceType = processedEvents?.length === 0 ? '일등' : '출근';
+      // 현재 시각과 attendtime_coffice 비교
+      const now = new Date();
+      const [attendHour, attendMinute] = selectedSubscription.attendtime_coffice.split(':').map(Number);
+      const attendTime = new Date();
+      attendTime.setHours(attendHour, attendMinute, 0);
+
+      // 출근 타입 결정 (일등/출근/지각)
+      let attendanceType;
+      if (now > attendTime) {
+        attendanceType = '지각';
+      } else if (processedEvents?.length === 0) {
+        attendanceType = '일등';
+      } else {
+        attendanceType = '출근';
+      }
 
       const { data, error } = await supabase
         .from('event_log')
