@@ -1098,9 +1098,9 @@ export default function Home() {
                                   '일등': 0,
                                   '출근': 1,
                                   '지각': 2,
-                                  '결석': 3,
-                                  '퇴근': 5,
-                                  null: 4 // 대기 상태
+                                  null: 3, // 대기 상태
+                                  '결근': 4,
+                                  '퇴근': 5
                                 };
                                 
                                 const statusA = memberStatus[selectedSubscription.id_coffice]
