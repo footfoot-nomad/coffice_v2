@@ -11,13 +11,6 @@ import MemberCard from './components/MemberCard'
 import AttendanceButton from './components/AttendanceButton'
 
 // getDatesForMonth 함수를 handleSelectUser 함수 전에 정의
-const processTimestampEvent = (timestamp) => {
-  if (!timestamp) return null;
-  const date = new Date(timestamp);
-  date.setHours(date.getHours() - 9);
-  return date.toISOString();
-};
-
 const getDatesForMonth = (yearMonth, dayOfWeek) => {
   const year = 2000 + parseInt(yearMonth.substring(0, 2));
   const month = parseInt(yearMonth.substring(2, 4)) - 1; // 0-based month
@@ -207,14 +200,14 @@ export default function Home() {
           if (currentStatus) {
             // 타임스탬프를 비교하여 최신 이벤트만 적용
             const currentTimestamp = currentStatus.timestamp_user ? new Date(currentStatus.timestamp_user) : new Date(0);
-            const newTimestamp = new Date(processTimestampEvent(event.timestamp_event));
+            const newTimestamp = new Date(event.timestamp_event);
 
             if (newTimestamp > currentTimestamp) {
               newMemberStatus[officeId].dates[eventDate].members[userId] = {
                 id_user: userId,
                 status_user: event.type_event,
                 message_user: event.message_event,
-                timestamp_user: processTimestampEvent(event.timestamp_event)
+                timestamp_user: event.timestamp_event
               };
             }
           }
@@ -315,7 +308,7 @@ export default function Home() {
                   id_user,
                   status_user: type_event,
                   message_user: message_event,
-                  timestamp_user: processTimestampEvent(timestamp_event)
+                  timestamp_user: timestamp_event
                 };
               });
 
@@ -557,14 +550,14 @@ export default function Home() {
             if (currentStatus) {
               // 타임스탬프를 비교하여 최신 이벤트만 적용
               const currentTimestamp = currentStatus.timestamp_user ? new Date(currentStatus.timestamp_user) : new Date(0);
-              const newTimestamp = new Date(processTimestampEvent(event.timestamp_event));
+              const newTimestamp = new Date(event.timestamp_event);
 
               if (newTimestamp > currentTimestamp) {
                 newMemberStatus[officeId].dates[eventDate].members[userId] = {
                   id_user: userId,
                   status_user: event.type_event,
                   message_user: event.message_event,
-                  timestamp_user: processTimestampEvent(event.timestamp_event)
+                  timestamp_user: event.timestamp_event
                 };
               }
             }
@@ -810,30 +803,53 @@ export default function Home() {
         async (payload) => {
           console.log('이벤트 로그 변경 감지:', payload);
 
-          setMemberStatus(prevStatus => {
-            const newStatus = { ...prevStatus };
+          // 이벤트 로그 상태 업데이트
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const { new: newEvent } = payload;
             
-            if (!newEvent) return prevStatus;
+            setEventLog(prevLog => {
+              const updatedLog = [...prevLog];
+              const existingEventIndex = updatedLog.findIndex(event => 
+                event.id_coffice === newEvent.id_coffice &&
+                event.date_event === newEvent.date_event &&
+                event.id_user === newEvent.id_user &&
+                event.type_event === newEvent.type_event
+              );
+              
+              if (existingEventIndex >= 0) {
+                updatedLog[existingEventIndex] = newEvent;
+              } else {
+                updatedLog.push(newEvent);
+              }
+              
+              return updatedLog;
+            });
 
-            const { id_coffice, date_event, id_user, type_event, message_event, timestamp_event } = newEvent;
+            // memberStatus 업데이트
+            setMemberStatus(prevStatus => {
+              const newStatus = { ...prevStatus };
+              const { id_coffice, date_event, id_user, type_event, message_event, timestamp_event } = newEvent;
 
-            if (!newStatus[id_coffice]) {
-              newStatus[id_coffice] = { dates: {} };
-            }
-            if (!newStatus[id_coffice].dates[date_event]) {
-              newStatus[id_coffice].dates[date_event] = { members: {} };
-            }
+              if (!newStatus[id_coffice]) {
+                newStatus[id_coffice] = { dates: {} };
+              }
+              if (!newStatus[id_coffice].dates[date_event]) {
+                newStatus[id_coffice].dates[date_event] = { members: {} };
+              }
+              if (!newStatus[id_coffice].dates[date_event].members[id_user]) {
+                newStatus[id_coffice].dates[date_event].members[id_user] = {};
+              }
 
-            newStatus[id_coffice].dates[date_event].members[id_user] = {
-              id_user,
-              status_user: type_event,
-              message_user: message_event,
-              timestamp_user: processTimestampEvent(timestamp_event)
-            };
+              newStatus[id_coffice].dates[date_event].members[id_user] = {
+                id_user,
+                status_user: type_event,
+                message_user: message_event,
+                timestamp_user: timestamp_event
+              };
 
-            return newStatus;
-          });
+              return newStatus;
+            });
+          }
         }
       )
       .subscribe();
@@ -1194,8 +1210,44 @@ export default function Home() {
                               selectedUserData={selectedUserData}
                               memberStatus={memberStatus}
                               officeInfo={officeInfo}
-                              onStatusUpdate={(newStatus) => {
-                                setMemberStatus(newStatus)
+                              onAttendanceClick={async () => {
+                                try {
+                                  // 최신 이벤트 로그 데이터 가져오기
+                                  const { data: latestEventLog, error: eventLogError } = await supabase
+                                    .from('event_log')
+                                    .select('*')
+                                    .eq('id_coffice', selectedSubscription.id_coffice)
+                                    .eq('date_event', selectedDate);
+                  
+                                  if (eventLogError) throw eventLogError;
+                  
+                                  // eventLog 상태 업데이트
+                                  setEventLog(latestEventLog);
+                  
+                                  // memberStatus 상태 업데이트
+                                  const newMemberStatus = { ...memberStatus };
+                                  latestEventLog.forEach(event => {
+                                    const { id_coffice, date_event, id_user, type_event, message_event, timestamp_event } = event;
+                  
+                                    if (!newMemberStatus[id_coffice]) {
+                                      newMemberStatus[id_coffice] = { dates: {} };
+                                    }
+                                    if (!newMemberStatus[id_coffice].dates[date_event]) {
+                                      newMemberStatus[id_coffice].dates[date_event] = { members: {} };
+                                    }
+                  
+                                    newMemberStatus[id_coffice].dates[date_event].members[id_user] = {
+                                      id_user,
+                                      status_user: type_event,
+                                      message_user: message_event,
+                                      timestamp_user: timestamp_event
+                                    };
+                                  });
+                  
+                                  setMemberStatus(newMemberStatus);
+                                } catch (error) {
+                                  console.error('상태 업데이트 실패:', error);
+                                }
                               }}
                             />
                           );

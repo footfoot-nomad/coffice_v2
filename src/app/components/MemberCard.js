@@ -491,7 +491,10 @@ const MemberCard = ({
             event.type_event === '일등'
           );
 
-          return (status?.status_user === '일등' || (status?.status_user === '퇴근' && wasFirst)) && (
+          // 현재 상태가 '일등'이거나 (퇴근 상태이면서 일등 이벤트가 있었던 경우) 왕관 표시
+          const shouldShowCrown = status?.status_user === '일등' || wasFirst;
+
+          return shouldShowCrown && (
             <div className="mt-[-13px] z-10">
               <div className="w-[24px] h-[24px] rounded-full bg-[#FFFF00] border border-black flex items-center justify-center shadow-md">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">

@@ -63,9 +63,8 @@ const AttendanceButton = ({
       // 가장 최근 출근 기록 사용
       const attendanceEvent = attendanceEvents[0];
 
-      // 시작 시간 처리
-      const startTimeStr = processTimestampEvent(attendanceEvent.timestamp_event);
-      const startTime = new Date(startTimeStr);
+      // 시작 시간과 종료 시간 처리 (둘 다 UTC 기준)
+      const startTime = new Date(attendanceEvent.timestamp_event);
       const endTime = new Date();
       
       // 근무 시간 계산 (밀리초를 초로 변환)
@@ -95,7 +94,7 @@ const AttendanceButton = ({
           type_event: '퇴근',
           message_event: timeElapsed.toString(),
           date_event: selectedDate,
-          timestamp_event: endTime.toISOString()
+          timestamp_event: endTime.toISOString()  // UTC 시간으로 저장
         }]);
 
       if (error) throw error;
@@ -154,10 +153,7 @@ const AttendanceButton = ({
       if (fetchError) throw fetchError;
 
       // 가져온 이벤트 데이터의 timestamp 처리
-      const processedEvents = existingEvents?.map(event => ({
-        ...event,
-        timestamp_event: processTimestampEvent(event.timestamp_event)
-      }));
+      const processedEvents = existingEvents;
 
       // 현재 시각과 attendtime_coffice 비교
       const now = new Date();
@@ -183,7 +179,7 @@ const AttendanceButton = ({
           type_event: attendanceType,
           message_event: null,
           date_event: selectedDate,
-          timestamp_event: new Date().toISOString()
+          timestamp_event: now.toISOString()  // UTC 시간으로 저장
         }]);
 
       if (error) throw error;

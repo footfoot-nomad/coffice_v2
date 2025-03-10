@@ -171,13 +171,48 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
 
       // 퇴근 상태일 때
       if (currentStatus?.status_user === '퇴근') {
-        console.log('퇴근 상태 감지');
+        console.log('퇴근 상태 상세 정보:', {
+          currentStatus,
+          selectedDate,
+          subscriptionId: selectedSubscription.id_coffice,
+          memberStatusStructure: JSON.stringify(memberStatus[selectedSubscription.id_coffice]?.dates[selectedDate], null, 2)
+        });
+
         if (currentStatus?.timestamp_user) {
-          const startTime = new Date(currentStatus.timestamp_user);
-          const endTime = new Date(currentStatus.timestamp_user);
-          const elapsed = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
-          setTimeElapsed(elapsed);
-          setTimerStatus('ended');
+          // 해당 날짜의 멤버 상태 확인
+          const dateData = memberStatus[selectedSubscription.id_coffice]?.dates[selectedDate];
+          const members = dateData?.members || {};
+
+          console.log('멤버 데이터 확인:', {
+            members,
+            currentUserId: selectedUserData.id_user
+          });
+
+          // 현재 사용자의 이전 상태 확인
+          const userPreviousStatus = currentStatus.previous_status;
+          const userPreviousTimestamp = currentStatus.previous_timestamp;
+
+          console.log('사용자 이전 상태 확인:', {
+            userPreviousStatus,
+            userPreviousTimestamp
+          });
+
+          if (userPreviousStatus && ['출근', '일등', '지각'].includes(userPreviousStatus) && userPreviousTimestamp) {
+            const startTime = new Date(userPreviousTimestamp);
+            const endTime = new Date(currentStatus.timestamp_user);
+            const elapsed = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+            setTimeElapsed(elapsed);
+            setTimerStatus('ended');
+            console.log('근무시간 계산 완료:', {
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+              elapsed
+            });
+          } else {
+            console.log('근무시간 계산 실패: 유효한 출근 기록을 찾을 수 없음');
+            setTimeElapsed(0);
+            setTimerStatus('waiting');
+          }
         }
         return;
       }
