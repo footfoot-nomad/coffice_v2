@@ -11,7 +11,8 @@ const MemberCard = ({
   memberInfo,
   status,
   selectedUserData,
-  memberStatus
+  memberStatus,
+  eventLog
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -433,7 +434,7 @@ const MemberCard = ({
             <div className="absolute right-1 top-1 z-10">
               <div className="badge bg-white shadow-md w-[36px] h-[20px] flex items-center justify-center p-0">
                 <span className="text-[11px] font-medium" style={{ color: getStatusColor(status.status_user) }}>
-                  {status.status_user}
+                  {status.status_user === '일등' ? '출근' : status.status_user}
                 </span>
               </div>
             </div>
@@ -480,16 +481,26 @@ const MemberCard = ({
           </div>
         </div>
         
-        {/* 출근 순서 뱃지 */}
-        {(status?.status_user === '출근' || status?.status_user === '일등' || status?.status_user === '지각') && (
-          <div className="mt-[-13px] z-10">
-            <div className="w-[24px] h-[24px] rounded-full bg-[#FFFF00] border border-black flex items-center justify-center shadow-md">
-              <span className="text-[14px] font-bold text-black">
-                {getAttendanceOrder(memberStatus, date, officeId, member.id_user)}
-              </span>
+        {/* 일등 왕관 아이콘 */}
+        {(() => {
+          // 해당 멤버의 모든 이벤트 중 '일등' 이벤트가 있었는지 확인
+          const wasFirst = eventLog?.some(event => 
+            event.id_coffice.toString() === officeId.toString() &&
+            event.date_event === date &&
+            event.id_user.toString() === member.id_user.toString() &&
+            event.type_event === '일등'
+          );
+
+          return (status?.status_user === '일등' || (status?.status_user === '퇴근' && wasFirst)) && (
+            <div className="mt-[-13px] z-10">
+              <div className="w-[24px] h-[24px] rounded-full bg-[#FFFF00] border border-black flex items-center justify-center shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                  <path d="M5 17h14l1-9-4 3-4-5-4 5-4-3 1 9z"/>
+                </svg>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </>
   );

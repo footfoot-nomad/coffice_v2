@@ -1170,6 +1170,7 @@ export default function Home() {
                                     status={status}
                                     selectedUserData={selectedUserData}
                                     memberStatus={memberStatus}
+                                    eventLog={eventLog}
                                   />
                                 );
                               })}
