@@ -1113,6 +1113,26 @@ export default function Home() {
                                   ?.members[b.id_user]
                                   ?.status_user;
 
+                                // 퇴근한 멤버들끼리는 퇴근 시간으로 정렬
+                                if (statusA === '퇴근' && statusB === '퇴근') {
+                                  // event_log에서 퇴근 이벤트의 timestamp를 찾기
+                                  const eventsA = eventLog.filter(event => 
+                                    event.id_user === a.id_user && 
+                                    event.date_event === selectedDate &&
+                                    event.type_event === '퇴근'
+                                  );
+                                  const eventsB = eventLog.filter(event => 
+                                    event.id_user === b.id_user && 
+                                    event.date_event === selectedDate &&
+                                    event.type_event === '퇴근'
+                                  );
+                                  
+                                  const timestampA = eventsA.length > 0 ? new Date(eventsA[0].timestamp_event) : new Date(0);
+                                  const timestampB = eventsB.length > 0 ? new Date(eventsB[0].timestamp_event) : new Date(0);
+                                  
+                                  return timestampA - timestampB;
+                                }
+
                                 const timestampA = memberStatus[selectedSubscription.id_coffice]
                                   ?.dates[selectedDate]
                                   ?.members[a.id_user]
