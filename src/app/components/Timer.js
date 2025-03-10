@@ -178,41 +178,19 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
           memberStatusStructure: JSON.stringify(memberStatus[selectedSubscription.id_coffice]?.dates[selectedDate], null, 2)
         });
 
-        if (currentStatus?.timestamp_user) {
-          // 해당 날짜의 멤버 상태 확인
-          const dateData = memberStatus[selectedSubscription.id_coffice]?.dates[selectedDate];
-          const members = dateData?.members || {};
-
-          console.log('멤버 데이터 확인:', {
-            members,
-            currentUserId: selectedUserData.id_user
+        // message_user에서 근무시간 가져오기
+        if (currentStatus?.message_user) {
+          const workingSeconds = parseInt(currentStatus.message_user);
+          setTimeElapsed(workingSeconds);
+          setTimerStatus('ended');
+          console.log('근무시간 설정 완료:', {
+            workingSeconds,
+            message_user: currentStatus.message_user
           });
-
-          // 현재 사용자의 이전 상태 확인
-          const userPreviousStatus = currentStatus.previous_status;
-          const userPreviousTimestamp = currentStatus.previous_timestamp;
-
-          console.log('사용자 이전 상태 확인:', {
-            userPreviousStatus,
-            userPreviousTimestamp
-          });
-
-          if (userPreviousStatus && ['출근', '일등', '지각'].includes(userPreviousStatus) && userPreviousTimestamp) {
-            const startTime = new Date(userPreviousTimestamp);
-            const endTime = new Date(currentStatus.timestamp_user);
-            const elapsed = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
-            setTimeElapsed(elapsed);
-            setTimerStatus('ended');
-            console.log('근무시간 계산 완료:', {
-              startTime: startTime.toISOString(),
-              endTime: endTime.toISOString(),
-              elapsed
-            });
-          } else {
-            console.log('근무시간 계산 실패: 유효한 출근 기록을 찾을 수 없음');
-            setTimeElapsed(0);
-            setTimerStatus('waiting');
-          }
+        } else {
+          console.log('근무시간 데이터를 찾을 수 없음');
+          setTimeElapsed(0);
+          setTimerStatus('waiting');
         }
         return;
       }
@@ -328,19 +306,6 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
   };
 
   const formatTime = (totalSeconds) => {
-    const today = new Date();
-    const koreaToday = new Date(today.getTime() + (9 * 60 * 60 * 1000))
-      .toISOString()
-      .split('T')[0];
-
-    if (selectedDate !== koreaToday) {
-      return {
-        hours: '--',
-        minutes: '--',
-        seconds: '--'
-      };
-    }
-
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;

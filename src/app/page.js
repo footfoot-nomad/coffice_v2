@@ -1178,7 +1178,7 @@ export default function Home() {
 
                                 return (
                                   <MemberCard 
-                                    key={`${member.id_user}-${selectedDate}`}
+                                    key={`${selectedSubscription.id_coffice}-${member.id_user}-${selectedDate}`}
                                     member={member}
                                     date={selectedDate}
                                     officeId={selectedSubscription.id_coffice}
