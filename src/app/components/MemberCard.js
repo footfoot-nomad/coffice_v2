@@ -497,7 +497,7 @@ const MemberCard = ({
           return shouldShowCrown && (
             <div className="mt-[-13px] z-10">
               <div className="w-[24px] h-[24px] rounded-full bg-[#FFFF00] border border-black flex items-center justify-center shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="2" className="w-4 h-4">
                   <path d="M5 17h14l1-9-4 3-4-5-4 5-4-3 1 9z"/>
                 </svg>
               </div>
