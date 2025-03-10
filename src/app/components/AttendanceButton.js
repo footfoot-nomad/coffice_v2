@@ -214,8 +214,10 @@ const AttendanceButton = ({
         ?.members[selectedUserData.id_user]
         ?.status_user;
 
+      // 상태가 없는 경우 기본값을 '미출근'으로 설정
       if (!currentStatus) {
-        throw new Error('사용자 상태 정보를 찾을 수 없습니다.');
+        await createAttendanceEvent();
+        return;
       }
 
       // 출근/퇴근 상태에 따른 처리
