@@ -14,12 +14,12 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
     
     // attendTime 파싱 과정 디버깅
     console.log('Parsing attendTime:', {
-      raw_time_attend: selectedSubscription?.time_attend,
+      raw_time_attend: selectedSubscription?.attendtime_coffice,
       subscription_data: selectedSubscription
     });
 
     let attendTime = null;
-    if (selectedSubscription?.time_attend) {
+    if (selectedSubscription?.attendtime_coffice) {
       try {
         const today = new Date();
         const koreaToday = new Date(today.getTime() + (9 * 60 * 60 * 1000));
@@ -31,20 +31,19 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
         
         console.log('Parsing steps:', {
           step1_base_date: baseDate.toLocaleString('ko-KR'),
-          time_parts: selectedSubscription.time_attend.split(':'),
+          time_parts: selectedSubscription.attendtime_coffice.split(':'),
         });
 
-        const [hours, minutes, seconds] = selectedSubscription.time_attend.split(':').map(Number);
+        const [hours, minutes] = selectedSubscription.attendtime_coffice.split(':').map(Number);
         
         console.log('Time components:', {
           hours,
           minutes,
-          seconds,
-          are_valid: !isNaN(hours) && !isNaN(minutes) && !isNaN(seconds)
+          are_valid: !isNaN(hours) && !isNaN(minutes)
         });
 
         attendTime = new Date(baseDate);
-        attendTime.setHours(hours, minutes, seconds);
+        attendTime.setHours(hours, minutes, 0);
 
         console.log('Final attendTime:', {
           result: attendTime.toLocaleString('ko-KR'),
@@ -84,28 +83,55 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
   };
 
   const calculateTimer = (now, attendTime, openTime) => {
-    // 디버깅을 위한 로그 추가
-    console.log('Timer calculation:', {
-      now: now.toLocaleString(),
-      attendTime: attendTime.toLocaleString(),
-      openTime: openTime.toLocaleString()
+    // 디버깅을 위한 상세 로그 추가
+    console.log('Timer calculation details:', {
+      now: {
+        full: now.toLocaleString(),
+        time: now.getTime(),
+        hours: now.getHours(),
+        minutes: now.getMinutes()
+      },
+      attendTime: {
+        full: attendTime.toLocaleString(),
+        time: attendTime.getTime(),
+        hours: attendTime.getHours(),
+        minutes: attendTime.getMinutes()
+      },
+      openTime: {
+        full: openTime.toLocaleString(),
+        time: openTime.getTime(),
+        hours: openTime.getHours(),
+        minutes: openTime.getMinutes()
+      },
+      comparisons: {
+        nowVsOpen: now.getTime() - openTime.getTime(),
+        nowVsAttend: now.getTime() - attendTime.getTime(),
+        isAfterOpen: now >= openTime,
+        isBeforeAttend: now < attendTime
+      }
     });
 
     // 영업 시작 시간 이전인 경우
-    if (now < openTime) {
+    if (now.getTime() < openTime.getTime()) {
+      console.log('상태: 영업 시작 전 대기');
       setTimeElapsed(0);
       setTimerStatus('waiting');
       return;
     }
 
-    if (now < attendTime) {
-      const remainingTime = Math.floor((attendTime - now) / 1000);
+    // 영업 시작 시간과 출근 마감 시간 사이인 경우
+    if (now.getTime() >= openTime.getTime() && now.getTime() < attendTime.getTime()) {
+      console.log('상태: 카운트다운 중');
+      const remainingTime = Math.floor((attendTime.getTime() - now.getTime()) / 1000);
+      console.log('남은 시간(초):', remainingTime);
       setTimeElapsed(remainingTime);
       setTimerStatus('counting_down');
       return;
     }
 
-    if (now >= attendTime) {
+    // 출근 마감 시간 이후인 경우
+    if (now.getTime() >= attendTime.getTime()) {
+      console.log('상태: 출근 마감 후 대기');
       setTimeElapsed(0);
       setTimerStatus('waiting');
       return;
@@ -114,26 +140,40 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
 
   useEffect(() => {
     if (!selectedSubscription || !selectedDate || !memberStatus || !selectedUserData || !officeInfo) {
+      console.log('Timer initialization skipped:', {
+        hasSubscription: !!selectedSubscription,
+        hasDate: !!selectedDate,
+        hasMemberStatus: !!memberStatus,
+        hasUserData: !!selectedUserData,
+        hasOfficeInfo: !!officeInfo
+      });
       return;
     }
 
-    const currentStatus = memberStatus[selectedSubscription.id_coffice]
-      ?.dates[selectedDate]
-      ?.members[selectedUserData.id_user];
+    console.log('Timer initialization:', {
+      selectedDate,
+      subscriptionId: selectedSubscription.id_coffice
+    });
 
     // 타이머 로직
     const timer = setInterval(() => {
       const now = new Date();
+      
+      // 현재 상태를 interval 내부에서 가져오기
+      const currentStatus = memberStatus[selectedSubscription.id_coffice]
+        ?.dates[selectedDate]
+        ?.members[selectedUserData.id_user];
+
+      console.log('Current status check:', {
+        status: currentStatus?.status_user,
+        timestamp: currentStatus?.timestamp_user
+      });
 
       // 퇴근 상태일 때
       if (currentStatus?.status_user === '퇴근') {
-        // 해당 날짜의 출근/일등/지각 이벤트 찾기
-        const startEvent = memberStatus[selectedSubscription.id_coffice]
-          ?.dates[selectedDate]
-          ?.members[selectedUserData.id_user];
-
-        if (startEvent?.timestamp_user) {
-          const startTime = new Date(startEvent.timestamp_user);
+        console.log('퇴근 상태 감지');
+        if (currentStatus?.timestamp_user) {
+          const startTime = new Date(currentStatus.timestamp_user);
           const endTime = new Date(currentStatus.timestamp_user);
           const elapsed = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
           setTimeElapsed(elapsed);
@@ -144,6 +184,7 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
 
       // 출근/일등/지각 상태일 때 (스톱워치 모드)
       if (['출근', '일등', '지각'].includes(currentStatus?.status_user) && currentStatus?.timestamp_user) {
+        console.log('출근/일등/지각 상태 감지');
         const startTime = new Date(currentStatus.timestamp_user);
         const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000);
         setTimeElapsed(elapsed);
@@ -151,33 +192,52 @@ const Timer = ({ selectedSubscription, officeInfo, selectedDate, memberStatus, s
         return;
       }
 
-      // 선택한 날짜가 오늘이 아닐 때
-      const today = new Date().toISOString().split('T')[0];
-      if (selectedDate !== today) {
-        setTimeElapsed(0);
-        setTimerStatus('waiting');
-        return;
-      }
+      // status_user가 null이거나 정의되지 않은 경우에만 타이머 모드 실행
+      if (!currentStatus?.status_user) {
+        // 선택한 날짜가 오늘이 아닐 때 (한국 시간 기준)
+        const now = new Date();
+        const koreaToday = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+        const today = koreaToday.toISOString().split('T')[0];
+        
+        console.log('날짜 비교:', {
+          selectedDate,
+          today,
+          isToday: selectedDate === today
+        });
 
-      // 대기 상태일 때 (타이머 모드)
-      const currentDay = new Date().getDay();
-      const operationHours = getOperationHours(currentDay, officeInfo);
-      
-      if (!operationHours) {
-        return;
-      }
+        if (selectedDate !== today) {
+          console.log('오늘이 아닌 날짜 감지');
+          setTimeElapsed(0);
+          setTimerStatus('waiting');
+          return;
+        }
 
-      const { openTime, closeTime } = operationHours;
-      
-      // attendTime 설정
-      const baseDate = new Date();
-      baseDate.setHours(0, 0, 0, 0); // 오늘 날짜의 00:00:00으로 설정
-      
-      const [hours, minutes, seconds] = selectedSubscription.attendtime_coffice.split(':').map(Number);
-      const attendTime = new Date(baseDate);
-      attendTime.setHours(hours, minutes, seconds);
-      
-      calculateTimer(now, attendTime, openTime);
+        // 대기 상태일 때 (타이머 모드)
+        const currentDay = koreaToday.getDay(); // 한국 시간 기준 요일
+        const operationHours = getOperationHours(currentDay, officeInfo);
+        
+        if (!operationHours) {
+          console.log('운영 시간 정보 없음');
+          return;
+        }
+
+        console.log('타이머 모드 진입:', {
+          currentDay,
+          operationHours
+        });
+
+        const { openTime, closeTime } = operationHours;
+        
+        // attendTime 설정
+        const baseDate = new Date();
+        baseDate.setHours(0, 0, 0, 0); // 오늘 날짜의 00:00:00으로 설정
+        
+        const [hours, minutes] = selectedSubscription.attendtime_coffice.split(':').map(Number);
+        const attendTime = new Date(baseDate);
+        attendTime.setHours(hours, minutes, 0);
+        
+        calculateTimer(now, attendTime, openTime);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
