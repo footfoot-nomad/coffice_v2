@@ -44,16 +44,24 @@ const AttendanceButton = ({
 
     try {
       // 해당 날짜의 출근 이벤트 찾기
-      const { data: attendanceEvent, error: fetchError } = await supabase
+      const { data: attendanceEvents, error: fetchError } = await supabase
         .from('event_log')
         .select('*')
         .eq('id_coffice', selectedSubscription.id_coffice.toString())
         .eq('id_user', selectedUserData.id_user.toString())
         .eq('date_event', selectedDate)
-        .in('type_event', ['출근', '일등'])
-        .single();
+        .filter('type_event', 'in', '("출근","일등","지각")')
+        .order('timestamp_event', { ascending: true });
 
       if (fetchError) throw fetchError;
+
+      // 출근 기록이 없는 경우
+      if (!attendanceEvents || attendanceEvents.length === 0) {
+        throw new Error('출근 기록을 찾을 수 없습니다.');
+      }
+
+      // 가장 최근 출근 기록 사용
+      const attendanceEvent = attendanceEvents[0];
 
       // 시작 시간 처리
       const startTimeStr = processTimestampEvent(attendanceEvent.timestamp_event);
@@ -62,6 +70,21 @@ const AttendanceButton = ({
       
       // 근무 시간 계산 (밀리초를 초로 변환)
       const timeElapsed = Math.floor((endTime - startTime) / 1000);
+
+      // 이미 퇴근 기록이 있는지 확인
+      const { data: existingLeaveWork, error: checkError } = await supabase
+        .from('event_log')
+        .select('*')
+        .eq('id_coffice', selectedSubscription.id_coffice.toString())
+        .eq('id_user', selectedUserData.id_user.toString())
+        .eq('date_event', selectedDate)
+        .eq('type_event', '퇴근');
+
+      if (checkError) throw checkError;
+
+      if (existingLeaveWork && existingLeaveWork.length > 0) {
+        throw new Error('이미 퇴근 처리가 되어있습니다.');
+      }
 
       // 퇴근 이벤트 생성
       const { error } = await supabase
@@ -78,9 +101,9 @@ const AttendanceButton = ({
       if (error) throw error;
 
     } catch (error) {
-      console.error('퇴근 처리 실패');
-      showWarningMessage('퇴근 처리에 실패했습니다.');
-      throw error; // 에러를 상위로 전파
+      console.error('퇴근 처리 실패:', error);
+      showWarningMessage(error.message || '퇴근 처리에 실패했습니다.');
+      throw error;
     }
   };
 
@@ -179,30 +202,37 @@ const AttendanceButton = ({
     if (isLoading) return; // 이미 처리 중이면 중복 클릭 방지
     
     setIsLoading(true);
-    
+
     try {
-      const currentStatus = memberStatus[selectedSubscription?.id_coffice]
+      // 필수 데이터 확인
+      if (!selectedSubscription?.id_coffice || !selectedDate || !selectedUserData?.id_user) {
+        throw new Error('필수 데이터가 누락되었습니다.');
+      }
+
+      const currentStatus = memberStatus[selectedSubscription.id_coffice]
         ?.dates[selectedDate]
-        ?.members[selectedUserData?.id_user]
+        ?.members[selectedUserData.id_user]
         ?.status_user;
 
-      if (currentStatus === '출근' || currentStatus === '일등' || currentStatus === '지각') {
-        // 퇴근 처리
-        await handleLeaveWork();
-        // 상태 업데이트를 위해 콜백 호출
-        if (onAttendanceClick) {
-          onAttendanceClick();
-        }
-      } else {
-        // 출근 처리
-        await createAttendanceEvent();
-        // 상태 업데이트를 위해 콜백 호출
-        if (onAttendanceClick) {
-          onAttendanceClick();
-        }
+      if (!currentStatus) {
+        throw new Error('사용자 상태 정보를 찾을 수 없습니다.');
       }
+
+      // 출근/퇴근 상태에 따른 처리
+      if (['출근', '일등', '지각'].includes(currentStatus)) {
+        await handleLeaveWork();
+      } else {
+        await createAttendanceEvent();
+      }
+
+      // 상태 업데이트를 위해 콜백 호출
+      if (onAttendanceClick) {
+        await onAttendanceClick();
+      }
+
     } catch (error) {
-      // 에러는 이미 각 함수에서 처리됨
+      console.error('출/퇴근 처리 중 오류 발생:', error);
+      showWarningMessage(error.message || '처리 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }

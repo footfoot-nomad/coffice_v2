@@ -259,44 +259,71 @@ export default function Home() {
         async (payload) => {
           console.log('실시간 이벤트 수신:', payload);
 
-          // 새로운 이벤트 데이터 가져오기
-          const { data: latestData, error } = await supabase
-            .from('event_log')
-            .select('*')
-            .in('id_coffice', cofficeIds);
-
-          if (error) {
-            console.error('데이터 업데이트 실패:', error);
-            return;
-          }
-
-          // memberStatus 업데이트
-          setMemberStatus(prevStatus => {
-            const newStatus = { ...prevStatus };
-            
-            latestData.forEach(event => {
-              const { id_coffice, date_event, id_user, type_event, message_event, timestamp_event } = event;
+          if (payload.type === 'DELETE') {
+            // DELETE 이벤트 처리
+            setMemberStatus(prevStatus => {
+              const newStatus = { ...prevStatus };
+              const { id_coffice, date_event, id_user } = payload.old;
               
-              if (!newStatus[id_coffice]) {
-                newStatus[id_coffice] = { dates: {} };
-              }
-              if (!newStatus[id_coffice].dates[date_event]) {
-                newStatus[id_coffice].dates[date_event] = { members: {} };
+              // 해당 멤버의 상태 초기화
+              if (newStatus[id_coffice]?.dates[date_event]?.members[id_user]) {
+                newStatus[id_coffice].dates[date_event].members[id_user] = {
+                  id_user,
+                  status_user: null,
+                  message_user: null,
+                  timestamp_user: null
+                };
               }
               
-              newStatus[id_coffice].dates[date_event].members[id_user] = {
-                id_user,
-                status_user: type_event,
-                message_user: message_event,
-                timestamp_user: processTimestampEvent(timestamp_event)
-              };
+              return newStatus;
             });
 
-            return newStatus;
-          });
+            // eventLog에서도 삭제된 이벤트 제거
+            setEventLog(prevLog => 
+              prevLog.filter(event => 
+                !(event.id_coffice === payload.old.id_coffice && 
+                  event.date_event === payload.old.date_event && 
+                  event.id_user === payload.old.id_user)
+              )
+            );
+          } else {
+            // 기존 INSERT/UPDATE 이벤트 처리
+            const { data: latestData, error } = await supabase
+              .from('event_log')
+              .select('*')
+              .in('id_coffice', cofficeIds);
 
-          // eventLog 업데이트
-          setEventLog(latestData);
+            if (error) {
+              console.error('데이터 업데이트 실패:', error);
+              return;
+            }
+
+            setMemberStatus(prevStatus => {
+              const newStatus = { ...prevStatus };
+              
+              latestData.forEach(event => {
+                const { id_coffice, date_event, id_user, type_event, message_event, timestamp_event } = event;
+                
+                if (!newStatus[id_coffice]) {
+                  newStatus[id_coffice] = { dates: {} };
+                }
+                if (!newStatus[id_coffice].dates[date_event]) {
+                  newStatus[id_coffice].dates[date_event] = { members: {} };
+                }
+                
+                newStatus[id_coffice].dates[date_event].members[id_user] = {
+                  id_user,
+                  status_user: type_event,
+                  message_user: message_event,
+                  timestamp_user: processTimestampEvent(timestamp_event)
+                };
+              });
+
+              return newStatus;
+            });
+
+            setEventLog(latestData);
+          }
         }
       )
       .subscribe((status) => {
