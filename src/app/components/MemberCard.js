@@ -95,21 +95,10 @@ const MemberCard = ({
       return;
     }
 
-    // 현재 사용자이고 결근인 경우
-    if (isCurrentUser && userStatus === '결근') {
-      if (memberMessage) {
-        // 이미 사유서가 있는 경우 메시지 모달 표시
-        setShowMessageModal(true);
-      } else {
-        // 사유서가 없는 경우 사유서 작성 모달 표시
-        setShowReasonModal(true);
-      }
-      return;
-    }
-
-    // 다른 사용자의 메시지 표시
-    if (memberMessage) {
+    // 결근 상태일 때만 메시지 모달 표시
+    if (userStatus === '결근' && memberMessage) {
       setShowMessageModal(true);
+      return;
     }
   };
 
@@ -272,7 +261,7 @@ const MemberCard = ({
       )}
 
       {/* 메시지 모달 */}
-      {showMessageModal && memberStatus[officeId]?.dates[date]?.members[member.id_user]?.message_user && (
+      {showMessageModal && status?.status_user === '결근' && memberStatus[officeId]?.dates[date]?.members[member.id_user]?.message_user && (
         <div 
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"
           onClick={() => setShowMessageModal(false)}
