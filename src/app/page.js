@@ -1192,11 +1192,11 @@ export default function Home() {
                 onChange={(e) => setNewMessage(e.target.value)}
                 className="w-full border rounded-xl px-4 py-3 text-base resize-none"
                 rows={4}
-                maxLength={100}
+                maxLength={40}
                 placeholder="메시지를 입력하세요"
               />
               <p className="text-sm text-gray-500">
-                최대 100자까지 입력 가능합니다. ({newMessage.length}/100)
+                최대 40자까지 입력 가능합니다. ({newMessage.length}/40)
               </p>
             </div>
             <div className="flex gap-2 mt-4">
