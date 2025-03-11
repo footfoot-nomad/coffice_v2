@@ -107,11 +107,11 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-start justify-center z-[100] pt-[2vh]"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl w-[90%] max-w-[400px] h-[70vh] max-h-[550px] flex flex-col text-gray-800"
+        className="bg-white rounded-2xl w-[90%] max-w-[400px] h-[85vh] flex flex-col text-gray-800"
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
