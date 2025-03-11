@@ -107,11 +107,11 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-start justify-center z-[100] pt-[5vh]"
+      className="fixed inset-0 bg-black/50 flex items-start justify-center z-[100] pt-[2vh]"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl w-[90%] max-w-[400px] h-[80vh] max-h-[600px] flex flex-col text-gray-800"
+        className="bg-white rounded-2xl w-[90%] max-w-[400px] h-[70vh] max-h-[550px] flex flex-col text-gray-800"
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -173,7 +173,7 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="메시지를 입력하세요"
-            className="input input-bordered flex-1 text-base min-h-[40px] text-gray-800 placeholder:text-gray-400"
+            className="input input-bordered flex-1 text-base min-h-[40px] text-gray-800 placeholder:text-gray-400 focus:outline-none border-[1px] focus:border-[2px] border-gray-200 focus:border-gray-800"
             style={{ fontSize: '16px' }}
           />
           <button type="submit" className="btn bg-[#FFFF00] hover:bg-[#FFFF00] text-black border-1 border-black shrink-0">
