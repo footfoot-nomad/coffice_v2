@@ -290,7 +290,7 @@ const MemberCard = ({
             </div>
 
             {/* 내용 영역 - 공책 스타일 */}
-            <div className="bg-[#fff9e5] rounded-lg p-4 min-h-[120px] relative border border-gray-300">
+            <div className="bg-[#fff9e5] rounded-lg p-4 min-h-[120px] relative border border-gray-300 shadow-inner">
               {/* 공책 라인 효과 */}
               <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-[#ff9b9b] ml-[20px]"></div>
               <p className="text-gray-700 text-base whitespace-pre-line pl-[30px] leading-[28px]" 
@@ -365,7 +365,7 @@ const MemberCard = ({
             </div>
 
             {/* 입력 영역 - 공책 스타일 */}
-            <div className="bg-[#fff9e5] rounded-lg p-4 relative border border-gray-300">
+            <div className="bg-[#fff9e5] rounded-lg p-4 relative border border-gray-300 shadow-inner">
               {/* 공책 라인 효과 */}
               <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-[#ff9b9b] ml-[20px]"></div>
               <textarea
@@ -432,7 +432,7 @@ const MemberCard = ({
           {/* 출근 뱃지 */}
           {status?.status_user && (
             <div className="absolute right-1 top-1 z-10">
-              <div className="badge bg-white w-[36px] h-[20px] flex items-center justify-center p-0">
+              <div className="badge bg-white shadow-md w-[36px] h-[20px] flex items-center justify-center p-0">
                 <span className="text-[11px] font-medium" style={{ color: getStatusColor(status.status_user) }}>
                   {status.status_user === '일등' ? '출근' : status.status_user}
                 </span>
