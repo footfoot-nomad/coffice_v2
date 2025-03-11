@@ -290,7 +290,7 @@ const MemberCard = ({
             </div>
 
             {/* 내용 영역 - 공책 스타일 */}
-            <div className="bg-[#fff9e5] rounded-lg p-4 min-h-[120px] relative border border-gray-300 shadow-inner">
+            <div className="bg-[#fff9e5] rounded-lg p-4 min-h-[120px] relative border border-gray-300">
               {/* 공책 라인 효과 */}
               <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-[#ff9b9b] ml-[20px]"></div>
               <p className="text-gray-700 text-base whitespace-pre-line pl-[30px] leading-[28px]" 
@@ -365,7 +365,7 @@ const MemberCard = ({
             </div>
 
             {/* 입력 영역 - 공책 스타일 */}
-            <div className="bg-[#fff9e5] rounded-lg p-4 relative border border-gray-300 shadow-inner">
+            <div className="bg-[#fff9e5] rounded-lg p-4 relative border border-gray-300">
               {/* 공책 라인 효과 */}
               <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-[#ff9b9b] ml-[20px]"></div>
               <textarea
@@ -426,13 +426,13 @@ const MemberCard = ({
       {/* 카드 본체 */}
       <div className="flex flex-col items-center">
         <div ref={cardRef} 
-             className="shrink-0 flex flex-col items-center w-[25vw] min-w-[90px] max-w-[120px] border-2 border-gray-600 rounded-lg shadow-md bg-white overflow-hidden relative"
+             className="shrink-0 flex flex-col items-center w-[25vw] min-w-[90px] max-w-[120px] border-2 border-gray-600 rounded-lg bg-white overflow-hidden relative"
              onClick={handleCardClick}
         >
           {/* 출근 뱃지 */}
           {status?.status_user && (
             <div className="absolute right-1 top-1 z-10">
-              <div className="badge bg-white shadow-md w-[36px] h-[20px] flex items-center justify-center p-0">
+              <div className="badge bg-white w-[36px] h-[20px] flex items-center justify-center p-0">
                 <span className="text-[11px] font-medium" style={{ color: getStatusColor(status.status_user) }}>
                   {status.status_user === '일등' ? '출근' : status.status_user}
                 </span>
@@ -496,7 +496,7 @@ const MemberCard = ({
 
           return shouldShowCrown && (
             <div className="mt-[-13px] z-10">
-              <div className="w-[24px] h-[24px] rounded-full bg-[#FFFF00] border border-black flex items-center justify-center shadow-md">
+              <div className="w-[24px] h-[24px] rounded-full bg-[#FFFF00] border border-black flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="2" className="w-4 h-4">
                   <path d="M5 17h14l1-9-4 3-4-5-4 5-4-3 1 9z"/>
                 </svg>

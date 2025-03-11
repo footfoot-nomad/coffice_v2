@@ -328,11 +328,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
             </defs>
           </svg>
           {/* 명찰이미지 */}
-          <div className="w-[310px] bg-white rounded-2xl 
-            border-2 border-black 
-            shadow-[0_2px_8px_rgba(0,0,0,0.1)]
-            z-20 mt-[-50px] py-10 min-h-[450px]"
-          >
+          <div className="w-[310px] bg-white rounded-2xl border-2 border-black z-20 mt-[-50px] py-10 min-h-[450px]">
             {/* 캐릭터 이미지를 ProfileCharacter 컴포넌트로 교체 */}
             <div className="flex justify-center items-center">
               <div className="rounded-2xl overflow-hidden border-2 border-black w-[160px] aspect-square relative">
@@ -456,7 +452,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="btn btn-primary w-[288px] h-[48px] mx-auto block bg-[gray] hover:bg-[gray] text-white shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+            className="btn btn-primary w-[288px] h-[48px] mx-auto block bg-[gray] hover:bg-[gray] text-white"
           >
             <span className="text-[16px] font-semibold">로그아웃</span>
           </button>
@@ -472,14 +468,14 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
               <button
                 type="button"
                 onClick={() => setIsConfirmModalOpen(false)}
-                className="btn flex-1 btn-default shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+                className="btn flex-1 btn-default"
               >
                 취소
               </button>
               <button
                 type="button"
                 onClick={startNameEdit}
-                className="btn flex-1 btn-primary shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+                className="btn flex-1 btn-primary"
               >
                 수정
               </button>
@@ -511,13 +507,13 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
                 <button
                   type="button"
                   onClick={() => setIsNameModalOpen(false)}
-                  className="btn flex-1 btn-default shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+                  className="btn flex-1 btn-default"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="btn flex-1 btn-primary shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+                  className="btn flex-1 btn-primary"
                 >
                   저장
                 </button>
@@ -587,13 +583,12 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
       {/* 캐릭터 편집 모달 수정 */}
       {isCharacterModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-2xl p-6 w-[90%] max-w-[430px] max-h-[90vh] overflow-hidden border-2 border-gray-200 shadow-xl">
+          <div className="bg-white rounded-2xl p-6 w-[90%] max-w-[430px] max-h-[90vh] overflow-hidden border-2 border-gray-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-black">캐릭터 편집</h3>
               <button 
                 onClick={() => setIsCharacterModalOpen(false)}
                 className="btn btn-circle btn-ghost border-none text-xl text-black"
-
               >
                 ✕
               </button>
@@ -628,7 +623,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
                         key={i}
                         type="button"
                         onClick={() => updateCharacterInfo('hairNo', i)}
-                        className={`w-10 h-10 flex items-center justify-center border rounded-lg text-sm text-black shadow-[0_2px_8px_rgba(0,0,0,0.15)]
+                        className={`w-10 h-10 flex items-center justify-center border rounded-lg text-sm text-black
                           ${characterInfo.hairNo === i ? 'border-black bg-[#63C1FF]' : 'border-black'}`}
                       >
                         {i+1}
@@ -646,7 +641,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
                         key={i}
                         type="button"
                         onClick={() => updateCharacterInfo('faceNo', i)}
-                        className={`w-10 h-10 flex items-center justify-center border rounded-lg text-sm text-black shadow-[0_2px_8px_rgba(0,0,0,0.15)]
+                        className={`w-10 h-10 flex items-center justify-center border rounded-lg text-sm text-black
                           ${characterInfo.faceNo === i ? 'border-black bg-[#63C1FF]' : 'border-black'}`}
                       >
                         {i+1}
@@ -667,7 +662,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
                             key={index}
                             type="button"
                             onClick={() => updateCharacterInfo('hairColor', index)}
-                            className={`w-8 h-8 rounded-full border-2 shadow-[0_2px_8px_rgba(0,0,0,0.15)] ${
+                            className={`w-8 h-8 rounded-full border-2 ${
                               characterInfo.hairColor === index ? 'border-blue-500' : 'border-transparent'
                             }`}
                             style={{ backgroundColor: colorList[index] }}
@@ -684,7 +679,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
                             key={index}
                             type="button"
                             onClick={() => updateCharacterInfo('backgroundColor', index)}
-                            className={`w-8 h-8 rounded-full border-2 shadow-[0_2px_8px_rgba(0,0,0,0.15)] ${
+                            className={`w-8 h-8 rounded-full border-2 ${
                               characterInfo.backgroundColor === index ? 'border-blue-500' : 'border-transparent'
                             }`}
                             style={{ backgroundColor: colorList[index] }}
@@ -698,7 +693,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
                 <button
                   type="button"
                   onClick={randomGenerator}
-                  className="w-full rounded-xl py-3 font-medium mb-4 text-white relative overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+                  className="w-full rounded-xl py-3 font-medium mb-4 text-white relative overflow-hidden"
                 >
                   <div className="absolute inset-0">
                     {colorList.map((color, index) => (
@@ -723,7 +718,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
               <button
                 type="button"
                 onClick={() => setIsCharacterModalOpen(false)}
-                className="btn flex-1 btn-default shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+                className="btn flex-1 btn-default"
               >
                 취소
               </button>
@@ -762,7 +757,7 @@ export default function ProfileEditModal({ user, onClose, onUpdate }) {
                     alert('프로필 업데이트에 실패했습니다. 다시 시도해주세요.');
                   }
                 }}
-                className="btn flex-1 btn-primary shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+                className="btn flex-1 btn-primary"
               >
                 적용하기
               </button>

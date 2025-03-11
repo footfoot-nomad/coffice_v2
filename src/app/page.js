@@ -891,7 +891,7 @@ export default function Home() {
                       <div className="relative" ref={dropdownRef}>
                         <button
                           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                          className={`flex items-center min-w-[250px] w-auto h-[50px] px-5 py-3 border-1 border-black rounded-lg shadow-md ${isDropdownOpen ? 'bg-gray-100' : 'bg-gray-100'}`}
+                          className={`flex items-center min-w-[250px] w-auto h-[50px] px-5 py-3 border-1 border-black rounded-lg ${isDropdownOpen ? 'bg-gray-100' : 'bg-gray-100'}`}
                         >
                           <div className="flex-1">
                             <div className="flex items-center gap-2 text-black whitespace-nowrap">
@@ -909,7 +909,7 @@ export default function Home() {
                         </button>
 
                         {isDropdownOpen && (
-                          <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg shadow-lg border">
+                          <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg border">
                             {subscriptionDetails
                               .filter(subscription => 
                                 selectedSubscription ? 
@@ -948,7 +948,7 @@ export default function Home() {
                         className="flex flex-col items-center cursor-pointer"
                         onClick={() => setShowProfileModal(true)}
                       >
-                        <div className="rounded-lg overflow-hidden border-1 border-black w-[50px] aspect-square shadow-md">
+                        <div className="rounded-lg overflow-hidden border-1 border-black w-[50px] aspect-square">
                           <ProfileCharacter
                             profileStyle={selectedUserData?.profilestyle_user}
                             size={48}
@@ -998,7 +998,7 @@ export default function Home() {
                                 className={`
                                   btn btn-circle shrink grow min-w-[45px] max-w-[60px] h-[5vh] 
                                   flex items-center justify-center 
-                                  border-2 border-black normal-case shadow-md
+                                  border-2 border-black normal-case
                                   ${isOffDay
                                     ? 'bg-red-100 text-red-500 cursor-not-allowed border-red-300'
                                     : isSelected

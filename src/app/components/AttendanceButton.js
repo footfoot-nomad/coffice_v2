@@ -340,8 +340,7 @@ const AttendanceButton = ({
         className={`
           btn btn-circle w-[288px] h-[48px] mx-auto block
           border-1 border-black normal-case
-          shadow-lg hover:shadow-md transition-shadow
-          relative
+          transition
           ${isButtonDisabled || isLoading
             ? 'bg-[#DEDEDE] text-black hover:bg-[#DEDEDE] border-1 border-black' 
             : memberStatus[selectedSubscription?.id_coffice]?.dates[selectedDate]?.members[selectedUserData?.id_user]?.status_user === '출근' || 
