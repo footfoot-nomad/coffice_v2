@@ -10,8 +10,8 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
   const [error, setError] = useState(null)
   const messagesEndRef = useRef(null)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  const scrollToBottom = (smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" })
   }
 
   useEffect(() => {
@@ -28,7 +28,8 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
           if (loadError) throw loadError
 
           setMessages(data)
-          setTimeout(scrollToBottom, 100)
+          // 초기 로딩 시에는 즉시 스크롤
+          setTimeout(() => scrollToBottom(false), 100)
         } catch (err) {
           setError('메시지를 불러오는데 실패했습니다.')
         }
@@ -50,7 +51,8 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
           (payload) => {
             if (payload.eventType === 'INSERT') {
               setMessages(prev => [...prev, payload.new])
-              setTimeout(scrollToBottom, 100)
+              // 새 메시지가 올 때는 스무스 스크롤
+              setTimeout(() => scrollToBottom(true), 100)
             }
           }
         )
@@ -66,8 +68,8 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
     e.preventDefault()
     if (!newMessage.trim()) return
 
-    const messageContent = newMessage.trim() // 현재 메시지 내용 저장
-    setNewMessage('') // 즉시 입력창 비우기
+    const messageContent = newMessage.trim()
+    setNewMessage('')
 
     try {
       const messageData = {
@@ -84,7 +86,7 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
 
       if (sendError) {
         console.log('메시지 전송 에러:', sendError)
-        setNewMessage(messageContent) // 에러 발생 시 메시지 복원
+        setNewMessage(messageContent)
         throw sendError
       }
 
@@ -92,7 +94,8 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
         console.log('메시지 전송 성공:', data)
         setMessages(prev => [...prev, data[0]])
         setError(null)
-        scrollToBottom()
+        // 메시지 전송 시에는 스무스 스크롤
+        scrollToBottom(true)
       }
     } catch (err) {
       console.log('메시지 전송 실패:', err)
@@ -108,7 +111,7 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl w-[90%] max-w-[400px] h-[80vh] max-h-[600px] flex flex-col"
+        className="bg-white rounded-2xl w-[90%] max-w-[400px] h-[80vh] max-h-[600px] flex flex-col text-gray-800"
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -154,7 +157,7 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
                     })}
                   </time>
                 </div>
-                <div className={`chat-bubble ${isCurrentUser ? 'bg-[#FFFF00] text-black' : ''}`}>
+                <div className={`chat-bubble ${isCurrentUser ? 'bg-[#FFFF00] text-black' : 'text-gray-800'}`}>
                   {message.message_chat}
                 </div>
               </div>
@@ -170,7 +173,7 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="메시지를 입력하세요"
-            className="input input-bordered flex-1 text-base min-h-[40px]"
+            className="input input-bordered flex-1 text-base min-h-[40px] text-gray-800 placeholder:text-gray-400"
             style={{ fontSize: '16px' }}
           />
           <button type="submit" className="btn bg-[#FFFF00] hover:bg-[#FFFF00] text-black border-1 border-black shrink-0">
