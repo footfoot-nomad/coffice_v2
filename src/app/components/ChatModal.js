@@ -170,7 +170,8 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="메시지를 입력하세요"
-            className="input input-bordered flex-1"
+            className="input input-bordered flex-1 text-base min-h-[40px]"
+            style={{ fontSize: '16px' }}
           />
           <button type="submit" className="btn bg-[#FFFF00] hover:bg-[#FFFF00] text-black border-1 border-black shrink-0">
             전송
