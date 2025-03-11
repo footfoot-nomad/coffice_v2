@@ -9,6 +9,7 @@ import AuthForm from './components/Auth'
 import Timer from './components/Timer'
 import MemberCard from './components/MemberCard'
 import AttendanceButton from './components/AttendanceButton'
+import ChatModal from './components/ChatModal'
 
 // getDatesForMonth 함수를 handleSelectUser 함수 전에 정의
 const getDatesForMonth = (yearMonth, dayOfWeek) => {
@@ -63,6 +64,9 @@ export default function Home() {
   const [memberInfo, setMemberInfo] = useState([])
   const [isLoading, setIsLoading] = useState(false);
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false); // 퇴근 컨펌 모달 상태 추가
+  const [showChatModal, setShowChatModal] = useState(false)
+  const [hasNewMessage, setHasNewMessage] = useState(false)
+  const [lastReadMessage, setLastReadMessage] = useState(null)
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -857,6 +861,33 @@ export default function Home() {
     return () => channel.unsubscribe();
   }, [selectedSubscription]);
 
+  // 채팅 메시지 알림 관리
+  useEffect(() => {
+    if (!selectedSubscription) return
+
+    const channel = supabase
+      .channel('chat_notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat',
+          filter: `id_coffice=eq.${selectedSubscription.id_coffice}`
+        },
+        (payload) => {
+          if (payload.new.id_user !== selectedUserData?.id_user) {
+            setHasNewMessage(true)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [selectedSubscription, selectedUserData])
+
   return (
     <div className="relative"> {/* 기존 최상위 div */}
       <div className="flex justify-center min-h-screen bg-gray-50">
@@ -1099,9 +1130,35 @@ export default function Home() {
                       </div>
 
 {/* 출근 현황 영역 */}
-                      <div className="h-[35vh] flex flex-col mt-[2vh]">
-                        <div className="text-[20px] font-semibold text-gray-800 ml-4 mb-3">
-                          출근 현황
+                      <div className="h-[35vh] flex flex-col mt-[1vh]">
+                        <div className="flex justify-between items-center mx-4 mb-3">
+                          <div className="flex items-center">
+                            <div className="text-[20px] font-semibold text-gray-800 pt-3">
+                              출근 현황
+                            </div>
+                            <button 
+                              onClick={() => {
+                                setShowChatModal(true)
+                                setHasNewMessage(false)
+                              }}
+                              className="relative ml-1.5 -mb3"
+                            >
+                              <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                className="h-6 w-6"
+                                viewBox="0 0 23 23" 
+                                stroke="black"
+                                fill={hasNewMessage ? "#FFFF00" : "none"}
+                                strokeWidth={hasNewMessage ? 1.5 : 2}
+                              >
+                                <path 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round" 
+                                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
+                                />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                         {/* 멤버 카드 영역 */}
                         <div className="flex-1 overflow-y-auto min-h-[180px]">
@@ -1353,6 +1410,15 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ChatModal 추가 */}
+      <ChatModal
+        isOpen={showChatModal}
+        onClose={() => setShowChatModal(false)}
+        selectedSubscription={selectedSubscription}
+        selectedUserData={selectedUserData}
+        membersInfo={membersInfo}
+      />
     </div>
   )
 }
