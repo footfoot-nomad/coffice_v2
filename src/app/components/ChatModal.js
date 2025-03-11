@@ -104,15 +104,15 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
+      className="fixed inset-0 bg-black/50 flex items-start justify-center z-[100] pt-[5vh]"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl w-[90%] max-w-[400px] h-[80vh] flex flex-col"
+        className="bg-white rounded-2xl w-[90%] max-w-[400px] h-[80vh] max-h-[600px] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="p-4 border-b flex justify-between items-center">
+        <div className="p-4 border-b flex justify-between items-center shrink-0">
           <h3 className="text-xl font-bold text-black">채팅</h3>
           <button 
             onClick={onClose} 
@@ -124,7 +124,7 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
 
         {/* 에러 메시지 */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative" role="alert">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative shrink-0" role="alert">
             <span className="block sm:inline">{error}</span>
           </div>
         )}
@@ -164,7 +164,7 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
         </div>
 
         {/* 메시지 입력 영역 */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2">
+        <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2 shrink-0">
           <input
             type="text"
             value={newMessage}
@@ -172,7 +172,7 @@ export default function ChatModal({ isOpen, onClose, selectedSubscription, selec
             placeholder="메시지를 입력하세요"
             className="input input-bordered flex-1"
           />
-          <button type="submit" className="btn bg-[#FFFF00] hover:bg-[#FFFF00] text-black border-1 border-black">
+          <button type="submit" className="btn bg-[#FFFF00] hover:bg-[#FFFF00] text-black border-1 border-black shrink-0">
             전송
           </button>
         </form>
